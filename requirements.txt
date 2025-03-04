@@ -1,0 +1,16 @@
+# For Kaggle
+kagglehub
+
+# For YOLO
+torch
+torchvision
+opencv-python
+numpy
+seaborn
+ultralytics
+
+# For Data
+pandas
+scikit-learn
+scikit-image
+matplotlib
