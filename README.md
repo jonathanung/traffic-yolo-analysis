@@ -1,6 +1,15 @@
 # CMPT 353 Final Project
 
-**Project Proposal: Evaluating YOLO for Traffic Light Detection Under Varied Conditions**
+### Hotlinks
+[Models](models.md)
+
+[Structure](STRUCTURE.md)
+
+[Data](DATA.md)
+
+[Scripts](scripts/README.md)
+
+## Project Proposal: Evaluating YOLO for Traffic Light Detection Under Varied Conditions
 
 **1. Introduction and Motivation**
 
