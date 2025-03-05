@@ -1,6 +1,21 @@
 # CMPT 353 Final Project
 
-**Project Proposal: Evaluating YOLO for Traffic Light Detection Under Varied Conditions**
+Clone using:
+
+```bash
+git clone https://github.com/jonathanung/traffic-yolo-analysis --recurse-submodules
+```
+
+### Hotlinks
+[Models](models.md)
+
+[Structure](STRUCTURE.md)
+
+[Data](DATA.md)
+
+[Scripts](scripts/README.md)
+
+## Project Proposal: Evaluating YOLO for Traffic Light Detection Under Varied Conditions
 
 **1. Introduction and Motivation**
 
