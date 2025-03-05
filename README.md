@@ -1,5 +1,11 @@
 # CMPT 353 Final Project
 
+Clone using:
+
+```bash
+git clone https://github.com/jonathanung/traffic-yolo-analysis --recurse-submodules
+```
+
 ### Hotlinks
 [Models](models.md)
 

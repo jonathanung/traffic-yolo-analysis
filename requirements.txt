@@ -1,3 +1,5 @@
+# I highly recommend using a virtual environment to install these dependencies. 
+
 # For Kaggle
 kagglehub
 

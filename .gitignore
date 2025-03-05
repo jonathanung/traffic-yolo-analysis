@@ -1,2 +1,6 @@
 data/
 .DS_Store
+
+*.pt
+models/*/weights/
+models/ultralytics/*/weights/
