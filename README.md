@@ -1,7 +1,6 @@
 # CMPT 353 Final Project
 
 Clone using:
-
 ```bash
 git clone https://github.com/jonathanung/traffic-yolo-analysis --recurse-submodules
 ```
@@ -37,9 +36,15 @@ This project aligns with many of the course topics discussed such as data ingest
 
 **3. Data and Methods**
 - **Datasets:**
-    
     - Primary datasets will include publicly available traffic light datasets such as the LISA Traffic Light Dataset or the Bosch Small Traffic Lights Dataset.
     - If needed, additional data may be sourced or synthesized to capture more varied environmental conditions.
+    - Include dashcam footage for real-world scenarios
+    - Consider specific visual challenges:
+        - Rain droplets on camera
+        - Lens flare/reflections
+        - Low-quality camera noise
+        - Snow/fog conditions
+        - Motion blur
 - **Methodology:**
     - **Data Preprocessing:**
         - Clean and format the image and annotation data to ensure consistency (e.g., normalization, resizing, splitting into training/validation/test sets).
