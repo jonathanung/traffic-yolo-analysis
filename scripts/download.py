@@ -1,5 +1,3 @@
-# This file is currently untested
-
 import kagglehub
 import os
 
