@@ -6,14 +6,16 @@ Clone using:
 git clone https://github.com/jonathanung/traffic-yolo-analysis --recurse-submodules
 ```
 
+Install weights using instructions from [MODELS.md](MODELS.md).
+
 ### Hotlinks
-[Models](models.md)
+[MODELS](MODELS.md)
 
-[Structure](STRUCTURE.md)
+[STRUCTURE](STRUCTURE.md)
 
-[Data](DATA.md)
+[DATA](DATA.md)
 
-[Scripts](scripts/README.md)
+[SCRIPTS](scripts/README.md)
 
 ## Project Proposal: Evaluating YOLO for Traffic Light Detection Under Varied Conditions
 
