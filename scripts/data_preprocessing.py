@@ -2,7 +2,7 @@ import os
 import cv2
 import numpy as np
 import pandas as pd
-
+import re
 from sklearn.model_selection import train_test_split
 from pathlib import Path
 from typing import Tuple, List, Dict
@@ -46,10 +46,29 @@ def preprocess_lisa_dataset(lisa_dir: str) -> None:
     - Split into train/val/test sets
     """
     # TODO: Implement LISA dataset preprocessing
-    img_width, img_height = get_image_size(###)
-    
-    convert_to_yolo_format(img_width,img_height,)
-    pass
+    dataset_names = ['daySequence1', 'daySequence2', 'nightSequence1', 'nightSequence2']
+
+    for dataset in dataset_names:
+        dataset_dir = f"{lisa_dir}/{dataset}/{dataset}/frames/"
+
+        annotation_path = f"{lisa_dir}/Annotations/Annotations/{dataset}/frameAnnotationsBOX.csv"
+        # print(annotation_path)
+        dataset_data = read_annotations(annotation_path)
+        print(dataset_data)
+
+        for dirpath, _, filenames in os.walk(dataset_dir):
+            i = 0
+            for IMGname in filenames:
+                img_path = os.path.join(dirpath, IMGname)
+                pattern = fr'{IMGname}'
+                if dataset_data['Filename'].str.contains(pattern, na=False, regex=True).any() and i < 5:
+                    print(img_path)
+                i += 1
+
+    # img_width, img_height = get_image_size(###)
+    #
+    # convert_to_yolo_format(img_width,img_height,)
+    # pass
 
 def preprocess_bosch_dataset(bosch_dir: str) -> None:
     """
