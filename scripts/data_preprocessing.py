@@ -76,26 +76,29 @@ def preprocess_lisa_dataset(lisa_dir: str) -> None:
         # strip img names of prefix directory
         dataset_data['Filename'] = dataset_data['Filename'].str.replace(fr'^.*?({dataset})', r'\1',
                                                                         regex=True)
-
+        img_file_names = dataset_data['Filename'].values
 
 
         # TODO: split data into new YOLO train/validate sets
 
-        print(dataset_data)
 
-        # for dirpath, _, filenames in os.walk(dataset_dir):
-        #     i = 0
-        #     for IMGname in filenames:
-        #         img_path = os.path.join(dirpath, IMGname)
-        #         pattern = fr'{IMGname}'
-        #         if dataset_data['Filename'].str.contains(pattern, na=False, regex=True).any() and i < 5:
-        #             print(img_path)
-        #         i += 1
+        ### COULD BE DELETED ###
+        # inserting class column with zereos
+        dataset_data['object_class'] = 0
 
-    # img_width, img_height = get_image_size(###)
-    #
-    # convert_to_yolo_format(img_width,img_height,)
-    # pass
+        # prep df to be exported as .txt
+        dataset_data = dataset_data[['object_class', 'x_center', 'y_center', 'width', 'height']]
+
+
+        # TODO: discuss where to put annotation .txt files and where to put YOLO datasets
+        ### EXPORTING INTO CURRENT DIRECTORY ###
+        # for img in img_file_names:
+        #     img += '.txt'
+        #     dataset_data.to_csv(img,sep=' ',index=False, header=False)
+        #     break
+
+        # print(dataset_data)
+
 
 
 def preprocess_bosch_dataset(bosch_dir: str) -> None:
