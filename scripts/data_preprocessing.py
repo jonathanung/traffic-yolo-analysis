@@ -77,33 +77,38 @@ def preprocess_lisa_dataset(lisa_dir: str) -> None:
     # dataset_names = ['daySequence1', 'daySequence2', 'nightSequence1', 'nightSequence2']
 
     for dataset_struct in datasets:
-        dataset: str = dataset_struct['name']
+        dataset_name: str = dataset_struct['name']
         train: bool = dataset_struct['train']
 
+        dataset_frame = pd.DataFrame()
         # call annotation reader function
-        annotation_path = f"{lisa_dir}/Annotations/Annotations/{dataset}/frameAnnotationsBOX.csv"
-        dataset_data = read_annotations(annotation_path, pd.DataFrame())
+        if not train:
+            annotation_path = f"{lisa_dir}/Annotations/Annotations/{dataset_name}/frameAnnotationsBOX.csv"
+            dataset_frame = read_annotations(annotation_path, dataset_frame)
+        else:
+            annotation_path = f"{lisa_dir}/Annotations/Annotations/{dataset_name}/frameAnnotationsBOX.csv"
+            dataset_frame = read_annotations(annotation_path, dataset_frame)
 
         # convert to YOLO
-        dataset_data = convert_to_yolo_format(dataset_data, 1280, 960)
+        dataset_frame = convert_to_yolo_format(dataset_frame, 1280, 960)
 
         # strip img names of prefix directory
-        dataset_data['Filename'] = dataset_data['Filename'].str.replace(fr'^.*?({dataset})', r'\1',
+        dataset_frame['Filename'] = dataset_frame['Filename'].str.replace(fr'^.*?({dataset_name})', r'\1',
                                                                         regex=True)
 
-        img_file_names = dataset_data['Filename'].values
+        img_file_names = dataset_frame['Filename'].values
 
-        print(dataset_data)
+        print(dataset_frame)
 
         # TODO: split data into new YOLO train/validate sets
 
 
         ### COULD BE DELETED ###
         # inserting class column with zereos
-        dataset_data['object_class'] = 0
+        dataset_frame['object_class'] = 0
 
         # prep df to be exported as .txt
-        dataset_data = dataset_data[['object_class', 'x_center', 'y_center', 'width', 'height']]
+        dataset_frame = dataset_frame[['object_class', 'x_center', 'y_center', 'width', 'height']]
 
 
         # TODO: discuss where to put annotation .txt files and where to put YOLO datasets
