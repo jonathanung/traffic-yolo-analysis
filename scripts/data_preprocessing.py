@@ -45,6 +45,7 @@ def convert_to_yolo_format(df: pd.DataFrame, img_width: int, img_height: int) ->
     df['y_center'] = (df['y_min'] + df['y_max']) / (2 * img_height)
     df['width'] = (df['x_max'] - df['x_min']) / img_width
     df['height'] = (df['y_max'] - df['y_min']) / img_height
+    df['object_class'] = 0
     return df
     # x_min, y_min, x_max, y_max = bounding_box
     #
