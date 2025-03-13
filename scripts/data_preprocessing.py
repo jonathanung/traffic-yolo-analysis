@@ -76,6 +76,7 @@ def preprocess_lisa_dataset(lisa_dir: str) -> None:
         # strip img names of prefix directory
         dataset_data['Filename'] = dataset_data['Filename'].str.replace(fr'^.*?({dataset})', r'\1',
                                                                         regex=True)
+
         img_file_names = dataset_data['Filename'].values
 
 
@@ -93,6 +94,7 @@ def preprocess_lisa_dataset(lisa_dir: str) -> None:
         # TODO: discuss where to put annotation .txt files and where to put YOLO datasets
         ### EXPORTING INTO CURRENT DIRECTORY ###
         # for img in img_file_names:
+        #     img = img[:-4]
         #     img += '.txt'
         #     dataset_data.to_csv(img,sep=' ',index=False, header=False)
         #     break
