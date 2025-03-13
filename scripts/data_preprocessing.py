@@ -7,6 +7,7 @@ from sklearn.model_selection import train_test_split
 from pathlib import Path
 from typing import Tuple, List, Dict
 from PIL import Image
+import shutil
 
 
 def get_image_size(image_path: str) -> tuple:
@@ -97,8 +98,8 @@ def preprocess_lisa_dataset(lisa_dir: str) -> None:
         dataset_name: str = dataset_struct['name']
         train: bool = dataset_struct['train']
         walked_dirs : List[str] = []
-
         dataset_frame = pd.DataFrame()
+        
         # call annotation reader function
         if not train:
             annotation_path = f"{lisa_dir}/Annotations/Annotations/{dataset_name}/frameAnnotationsBOX.csv"
@@ -119,8 +120,6 @@ def preprocess_lisa_dataset(lisa_dir: str) -> None:
         # convert to YOLO
         dataset_frame = convert_to_yolo_format(dataset_frame)
 
-        img_file_names = dataset_frame['Filename'].values
-
         # sort df by fname
         dataset_frame = dataset_frame.sort_values(by='Filename')
 
@@ -129,33 +128,99 @@ def preprocess_lisa_dataset(lisa_dir: str) -> None:
         # FOR DEBUGGING: export df to csv
         # dataset_frame.to_csv('dataset_frame.csv', index=False)
 
-        # TODO: split data into new YOLO train/validate sets
-
-
         ### COULD BE DELETED ###
 
-        # prep df to be exported as .txt
-        dataset_frame = dataset_frame[['object_class', 'x_center', 'y_center', 'width', 'height']]
+        export_yolo_data(lisa_dir, 'data/processed/lisa/yolo', dataset_name, dataset_frame)
 
 
-        # TODO: discuss where to put annotation .txt files and where to put YOLO datasets
-        # export_yolo_data(dataset_frame, 'data/processed/lisa/yolo')
-
-
-def export_yolo_data(df: pd.DataFrame, output_dir: str) -> None:
+def export_yolo_data(lisa_dir: str, output_dir: str, dataset_name: str, df: pd.DataFrame) -> None:
     """
-    Export YOLO data to a directory.
+    Export YOLO data to a directory by copying images directly from the raw folder.
+    - Copy images to output_dir/images/{dataset_name}/...
+    - For dayTrain and nightTrain, place all subdirectory images under the same parent
+    - Create directory structure for YOLO training
     """
-    ### EXPORTING INTO CURRENT DIRECTORY ###
-    # for img in img_file_names:
-    #     img += '.txt'
-    #     df.to_csv(img,sep=' ',index=False, header=False)
-    #     break
+    # Create base output directories
+    os.makedirs(f"{output_dir}/images", exist_ok=True)
+    os.makedirs(f"{output_dir}/labels", exist_ok=True)
+    
+    # Create dataset-specific directories
+    os.makedirs(f"{output_dir}/images/{dataset_name}", exist_ok=True)
+    
+    # Find all images in the dataset directory
+    image_extensions = ['.jpg', '.jpeg', '.png', '.bmp']
+    image_files = []
+    
+    # Special handling for dayTrain and nightTrain
+    if dataset_name in ['dayTrain', 'nightTrain']:
+        # For training datasets, look for all clips under the training directory
+        train_dir = Path(f"{lisa_dir}/{dataset_name}/{dataset_name}")
+        if train_dir.exists():
+            # Find all clip directories
+            clip_dirs = [d for d in train_dir.iterdir() if d.is_dir()]
+            
+            # Find images in each clip directory
+            for clip_dir in clip_dirs:
+                frames_dir = clip_dir / "frames"
+                if frames_dir.exists():
+                    for ext in image_extensions:
+                        image_files.extend(list(frames_dir.glob(f"*{ext}")))
+    else:
+        # For sequence datasets, use the standard approach
+        for ext in image_extensions:
+            possible_paths = [
+                Path(f"{lisa_dir}/{dataset_name}/{dataset_name}/frames"),
+                Path(f"{lisa_dir}/{dataset_name}/frames"),
+                Path(f"{lisa_dir}/{dataset_name}")
+            ]
+            
+            for path in possible_paths:
+                if path.exists():
+                    image_files.extend(list(path.glob(f"*{ext}")))
+    
+    print(f"Found {len(image_files)} images for {dataset_name}")
+    
+    # Copy images to output directory
+    copied_count = 0
+    for img_path in image_files:
+        # Get just the filename without path
+        filename = img_path.name
+        
+        # Destination path - all images go directly under the dataset directory
+        dst_path = f"{output_dir}/images/{dataset_name}/{filename}"
+        
+        # Copy the image
+        try:
+            shutil.copy2(img_path, dst_path)
+            copied_count += 1
+        except Exception as e:
+            print(f"Error copying {img_path} to {dst_path}: {e}")
+    
+    print(f"Exported {copied_count} images to {output_dir}/images/{dataset_name}")
+    
+    # Create labels directory
+    labels_dir = f"{output_dir}/labels/{dataset_name}"
+    os.makedirs(labels_dir, exist_ok=True)
 
-    # print(df)
-    pass
-
-
+    # Group by filename to handle multiple objects in the same image
+    grouped = df.groupby('Filename')
+    label_count = 0
+    
+    for filename, group in grouped:
+        # Remove file extension if present
+        base_filename = filename.split('.')[0] if '.' in filename else filename
+        
+        # Create label file path
+        label_path = f"{labels_dir}/{base_filename}.txt"
+        
+        # Write all objects for this image to the label file
+        with open(label_path, 'w') as f:
+            for _, row in group.iterrows():
+                # Format: class x_center y_center width height
+                f.write(f"{int(row['object_class'])} {row['x_center']} {row['y_center']} {row['width']} {row['height']}\n")
+                label_count += 1
+    
+    print(f"Exported {label_count} object labels across {len(grouped)} files to {labels_dir}")
 
 def preprocess_bosch_dataset(bosch_dir: str) -> None:
     """
