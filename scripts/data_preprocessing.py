@@ -136,14 +136,21 @@ def preprocess_lisa_dataset(lisa_dir: str) -> None:
 
 
         # TODO: discuss where to put annotation .txt files and where to put YOLO datasets
-        ### EXPORTING INTO CURRENT DIRECTORY ###
-        # for img in img_file_names:
-        #     img = img[:-4]
-        #     img += '.txt'
-        #     dataset_data.to_csv(img,sep=' ',index=False, header=False)
-        #     break
+        # export_yolo_data(dataset_frame, 'data/processed/lisa/yolo')
 
-        # print(dataset_data)
+
+def export_yolo_data(df: pd.DataFrame, output_dir: str) -> None:
+    """
+    Export YOLO data to a directory.
+    """
+    ### EXPORTING INTO CURRENT DIRECTORY ###
+    # for img in img_file_names:
+    #     img += '.txt'
+    #     df.to_csv(img,sep=' ',index=False, header=False)
+    #     break
+
+    # print(df)
+    pass
 
 
 
