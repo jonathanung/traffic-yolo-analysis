@@ -86,8 +86,11 @@ def preprocess_lisa_dataset(lisa_dir: str) -> None:
             annotation_path = f"{lisa_dir}/Annotations/Annotations/{dataset_name}/frameAnnotationsBOX.csv"
             dataset_frame = read_annotations(annotation_path, dataset_frame)
         else:
-            annotation_path = f"{lisa_dir}/Annotations/Annotations/{dataset_name}/frameAnnotationsBOX.csv"
-            dataset_frame = read_annotations(annotation_path, dataset_frame)
+            # walk through all subdirectories in the train directory
+            for root, dirs, files in os.walk(f"{lisa_dir}/Annotations/Annotations/{dataset_name}"):
+                for file in files:
+                    if file.endswith('.csv'):
+                        dataset_frame = read_annotations(os.path.join(root, file), dataset_frame)
 
         # convert to YOLO
         dataset_frame = convert_to_yolo_format(dataset_frame, 1280, 960)
