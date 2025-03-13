@@ -65,12 +65,22 @@ def preprocess_lisa_dataset(lisa_dir: str) -> None:
     dataset_names = ['daySequence1', 'daySequence2', 'nightSequence1', 'nightSequence2']
 
     for dataset in dataset_names:
-        dataset_dir = f"{lisa_dir}/{dataset}/{dataset}/frames/"
 
+        # call annotation reader function
         annotation_path = f"{lisa_dir}/Annotations/Annotations/{dataset}/frameAnnotationsBOX.csv"
-        # print(annotation_path)
         dataset_data = read_annotations(annotation_path)
-        convert_to_yolo_format(dataset_data, 1280, 960)
+
+        # convert to YOLO
+        dataset_data = convert_to_yolo_format(dataset_data, 1280, 960)
+
+        # strip img names of prefix directory
+        dataset_data['Filename'] = dataset_data['Filename'].str.replace(fr'^.*?({dataset})', r'\1',
+                                                                        regex=True)
+
+
+
+        # TODO: split data into new YOLO train/validate sets
+
         print(dataset_data)
 
         # for dirpath, _, filenames in os.walk(dataset_dir):
