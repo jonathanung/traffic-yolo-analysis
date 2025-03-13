@@ -20,7 +20,6 @@ def convert_to_yolo_format(img_width: int, img_height: int, bounding_box: List[i
     Convert bounding box coordinates to YOLO format.
     Returns a list of floats [x_center, y_center, width, height]
     """
-    img_width, img_height = get_image_size(image_path)
     
     x_min, y_min, x_max, y_max = bounding_box
     
@@ -39,6 +38,9 @@ def preprocess_lisa_dataset(lisa_dir: str) -> None:
     - Split into train/val/test sets
     """
     # TODO: Implement LISA dataset preprocessing
+    img_width, img_height = get_image_size(###)
+    
+    convert_to_yolo_format(img_width,img_height,)
     pass
 
 def preprocess_bosch_dataset(bosch_dir: str) -> None:
