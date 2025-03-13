@@ -7,6 +7,33 @@ from pathlib import Path
 from typing import Tuple, List, Dict
 from PIL import Image
 import shutil
+import yaml
+
+
+def create_yaml(output_dir: str, dataset_name: str) -> None:
+
+    img_path = f"{output_dir}/{dataset_name}/images"
+    labels_path = f"{output_dir}/{dataset_name}/labels"
+
+
+    # Get class names (or use a default list) 
+    class_names = ["traffic_light"]
+
+    yaml_data = {
+        "train_img": img_path,
+        "train_label": labels_path,
+        "nc": len(class_names),
+        "names": class_names,
+    }
+
+    dataset_path = f"{output_dir}/{dataset_name}"
+    yaml_path = Path(dataset_path) / f"{dataset_name}.yaml"
+    with open(yaml_path, "w") as yaml_file:
+        yaml.dump(yaml_data, yaml_file, default_flow_style=False)
+
+    print(f"Generated: {yaml_path}")
+
+
 
 
 def get_image_size(image_path: str) -> tuple:
@@ -139,7 +166,7 @@ def export_yolo_data(lisa_dir: str, output_dir: str, dataset_name: str, df: pd.D
     - For dayTrain and nightTrain, place all subdirectory images under the same parent
     - Create directory structure for YOLO training
     """
-
+    create_yaml(output_dir, dataset_name)
     # Create images and label dataset-specific directories
     os.makedirs(f"{output_dir}/{dataset_name}/images", exist_ok=True)
     os.makedirs(f"{output_dir}/{dataset_name}/labels", exist_ok=True)
