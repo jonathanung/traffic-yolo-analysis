@@ -135,12 +135,12 @@ def preprocess_lisa_dataset(lisa_dir: str) -> None:
 def export_yolo_data(lisa_dir: str, output_dir: str, dataset_name: str, df: pd.DataFrame) -> None:
     """
     Export YOLO data to a directory by copying images directly from the raw folder.
-    - Copy images to output_dir/images/{dataset_name}/...
+    - Copy images to output_dir/{dataset_name}/images/...
     - For dayTrain and nightTrain, place all subdirectory images under the same parent
     - Create directory structure for YOLO training
     """
 
-    # Create dataset-specific directories
+    # Create images and label dataset-specific directories
     os.makedirs(f"{output_dir}/{dataset_name}/images", exist_ok=True)
     os.makedirs(f"{output_dir}/{dataset_name}/labels", exist_ok=True)
     
@@ -195,23 +195,20 @@ def export_yolo_data(lisa_dir: str, output_dir: str, dataset_name: str, df: pd.D
 
     print(f"Exported {copied_count} images to {output_dir}/images/{dataset_name}")
 
-    # Create labels directory
-
-
 
     # Group by filename to handle multiple objects in the same image
     grouped = df.groupby('Filename')
     label_count = 0
-    
+    labels_dir = f"{output_dir}/{dataset_name}/labels"
+
     for filename, group in grouped:
 
         # Remove file extension if present
         base_filename = filename.split('.')[0] if '.' in filename else filename
 
-        labels_dir = f"{output_dir}/{dataset_name}/labels"
+
         # Create label file path
         label_path = f"{labels_dir}/{base_filename}.txt"
-        
         # Write all objects for this image to the label file
         with open(label_path, 'w') as f:
             for _, row in group.iterrows():
