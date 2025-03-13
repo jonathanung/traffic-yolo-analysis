@@ -139,12 +139,10 @@ def export_yolo_data(lisa_dir: str, output_dir: str, dataset_name: str, df: pd.D
     - For dayTrain and nightTrain, place all subdirectory images under the same parent
     - Create directory structure for YOLO training
     """
-    # Create base output directories
-    os.makedirs(f"{output_dir}/images", exist_ok=True)
-    os.makedirs(f"{output_dir}/labels", exist_ok=True)
-    
+
     # Create dataset-specific directories
-    os.makedirs(f"{output_dir}/images/{dataset_name}", exist_ok=True)
+    os.makedirs(f"{output_dir}/{dataset_name}/images", exist_ok=True)
+    os.makedirs(f"{output_dir}/{dataset_name}/labels", exist_ok=True)
     
     # Find all images in the dataset directory
     image_extensions = ['.jpg', '.jpeg', '.png', '.bmp']
@@ -184,31 +182,33 @@ def export_yolo_data(lisa_dir: str, output_dir: str, dataset_name: str, df: pd.D
     for img_path in image_files:
         # Get just the filename without path
         filename = img_path.name
-        
+
         # Destination path - all images go directly under the dataset directory
-        dst_path = f"{output_dir}/images/{dataset_name}/{filename}"
-        
+        dst_path = f"{output_dir}/{dataset_name}/images/{filename}"
+
         # Copy the image
         try:
             shutil.copy2(img_path, dst_path)
             copied_count += 1
         except Exception as e:
             print(f"Error copying {img_path} to {dst_path}: {e}")
-    
+
     print(f"Exported {copied_count} images to {output_dir}/images/{dataset_name}")
-    
+
     # Create labels directory
-    labels_dir = f"{output_dir}/labels/{dataset_name}"
-    os.makedirs(labels_dir, exist_ok=True)
+
+
 
     # Group by filename to handle multiple objects in the same image
     grouped = df.groupby('Filename')
     label_count = 0
     
     for filename, group in grouped:
+
         # Remove file extension if present
         base_filename = filename.split('.')[0] if '.' in filename else filename
-        
+
+        labels_dir = f"{output_dir}/{dataset_name}/labels"
         # Create label file path
         label_path = f"{labels_dir}/{base_filename}.txt"
         
