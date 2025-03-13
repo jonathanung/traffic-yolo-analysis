@@ -80,6 +80,7 @@ def preprocess_lisa_dataset(lisa_dir: str) -> None:
     for dataset_struct in datasets:
         dataset_name: str = dataset_struct['name']
         train: bool = dataset_struct['train']
+        walked_dirs : List[str] = []
 
         dataset_frame = pd.DataFrame()
         # call annotation reader function
@@ -89,16 +90,22 @@ def preprocess_lisa_dataset(lisa_dir: str) -> None:
         else:
             # walk through all subdirectories in the train directory
             for root, dirs, files in os.walk(f"{lisa_dir}/Annotations/Annotations/{dataset_name}"):
-                for file in files:
-                    if file.endswith('.csv'):
-                        dataset_frame = read_annotations(os.path.join(root, file), dataset_frame)
+                for dir in dirs:
+                    if dir not in walked_dirs:
+                        walked_dirs.append(dir)
+                        annotation_path = f"{lisa_dir}/Annotations/Annotations/{dataset_name}/{dir}/frameAnnotationsBOX.csv"
+                        dataset_frame = read_annotations(annotation_path, dataset_frame)
 
         # convert to YOLO
         dataset_frame = convert_to_yolo_format(dataset_frame, 1280, 960)
 
         # strip img names of prefix directory
-        dataset_frame['Filename'] = dataset_frame['Filename'].str.replace(fr'^.*?({dataset_name})', r'\1',
-                                                                        regex=True)
+        # if not train:
+        #     dataset_frame['Filename'] = dataset_frame['Filename'].str.replace(fr'^.*?({dataset_name})', r'\1',
+        #                                                                 regex=True)
+        # else:
+        #     dataset_frame['Filename'] = dataset_frame['Filename'].str.replace(fr'^.*?({dataset_name})', r'\1',
+        #                                                                 regex=True)
 
         img_file_names = dataset_frame['Filename'].values
 
