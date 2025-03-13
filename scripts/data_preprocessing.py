@@ -15,6 +15,15 @@ def get_image_size(image_path: str) -> tuple:
     with Image.open(image_path) as img:
         return img.size  # Returns (width, height)
 
+def read_annotations(annotation_path: str):
+    """
+    Given a path will return a pandas DataFrame with image Filename and bounding box coordinates
+    """
+    annotation_path += "frameAnnotationsBOX.csv"
+
+    return pd.read_csv(annotation_path, sep=';', usecols=['Filename', 'Upper left corner X', 'Upper left corner Y',
+                                                   'Lower right corner X', 'Lower right corner Y'])
+
 def convert_to_yolo_format(img_width: int, img_height: int, bounding_box: List[int]) -> List[float]:
     """
     Convert bounding box coordinates to YOLO format.
