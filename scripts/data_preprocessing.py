@@ -121,10 +121,13 @@ def preprocess_lisa_dataset(lisa_dir: str) -> None:
 
         img_file_names = dataset_frame['Filename'].values
 
+        # sort df by fname
+        dataset_frame = dataset_frame.sort_values(by='Filename')
+
         print(dataset_frame)
 
         # FOR DEBUGGING: export df to csv
-        dataset_frame.to_csv('dataset_frame.csv', index=False)
+        # dataset_frame.to_csv('dataset_frame.csv', index=False)
 
         # TODO: split data into new YOLO train/validate sets
 
