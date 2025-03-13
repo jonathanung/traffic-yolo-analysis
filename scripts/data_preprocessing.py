@@ -17,20 +17,22 @@ def get_image_size(image_path: str) -> tuple:
         return img.size  # Returns (width, height)
 
 
-def read_annotations(annotation_path: str)->pd.DataFrame:
+def read_annotations(annotation_path: str, df: pd.DataFrame)->pd.DataFrame:
     """
     Given a path will return a pandas DataFrame with image Filename and bounding box coordinates
     """
-
-    df = pd.read_csv(annotation_path, sep=';', usecols=['Filename', 'Upper left corner X', 'Upper left corner Y',
-                                                        'Lower right corner X', 'Lower right corner Y'])
-
-    df = df.rename(columns={
+    new_df = pd.read_csv(annotation_path, sep=';', usecols=['Filename', 'Upper left corner X', 'Upper left corner Y',
+                                                    'Lower right corner X', 'Lower right corner Y'])
+    new_df = new_df.rename(columns={
         'Upper left corner X': 'x_min',
         'Upper left corner Y': 'y_min',
         'Lower right corner X': 'x_max',
         'Lower right corner Y': 'y_max'
     })
+    if not df.empty:
+        df = pd.concat([df, new_df])
+    else:
+        df = new_df
     return df
 
 
@@ -80,7 +82,7 @@ def preprocess_lisa_dataset(lisa_dir: str) -> None:
 
         # call annotation reader function
         annotation_path = f"{lisa_dir}/Annotations/Annotations/{dataset}/frameAnnotationsBOX.csv"
-        dataset_data = read_annotations(annotation_path)
+        dataset_data = read_annotations(annotation_path, pd.DataFrame())
 
         # convert to YOLO
         dataset_data = convert_to_yolo_format(dataset_data, 1280, 960)
@@ -90,6 +92,8 @@ def preprocess_lisa_dataset(lisa_dir: str) -> None:
                                                                         regex=True)
 
         img_file_names = dataset_data['Filename'].values
+
+        print(dataset_data)
 
         # TODO: split data into new YOLO train/validate sets
 
