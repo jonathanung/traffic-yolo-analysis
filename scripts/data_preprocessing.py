@@ -17,7 +17,7 @@ def get_image_size(image_path: str) -> tuple:
         return img.size  # Returns (width, height)
 
 
-def read_annotations(annotation_path: str, df: pd.DataFrame)->pd.DataFrame:
+def read_data(annotation_path: str, df: pd.DataFrame, img_path: str)->pd.DataFrame:
     """
     Given a path will return a pandas DataFrame with image Filename and bounding box coordinates
     """
@@ -28,7 +28,20 @@ def read_annotations(annotation_path: str, df: pd.DataFrame)->pd.DataFrame:
         'Upper left corner Y': 'y_min',
         'Lower right corner X': 'x_max',
         'Lower right corner Y': 'y_max'
-    })
+    })                        
+    img_width, img_height = get_image_size(img_path)
+    new_df['img_width'] = img_width
+    new_df['img_height'] = img_height
+
+    # Extract filename from path
+    new_df['Filename'] = new_df['Filename'].apply(lambda x: x.split('/')[-1] if '/' in x else x)
+
+    # from img_path, remove everything after trailing '/'
+    img_path = img_path.split('/')[:-1]
+    img_path = '/'.join(img_path) + '/'
+    new_df['img_path'] = img_path
+
+
     if not df.empty:
         df = pd.concat([df, new_df])
     else:
@@ -36,15 +49,15 @@ def read_annotations(annotation_path: str, df: pd.DataFrame)->pd.DataFrame:
     return df
 
 
-def convert_to_yolo_format(df: pd.DataFrame, img_width: int, img_height: int) -> pd.DataFrame:
+def convert_to_yolo_format(df: pd.DataFrame) -> pd.DataFrame:
     """
     Convert bounding box coordinates to YOLO format.
     Returns a list of floats [x_center, y_center, width, height]
     """
-    df['x_center'] = (df['x_min'] + df['x_max']) / (2 * img_width)
-    df['y_center'] = (df['y_min'] + df['y_max']) / (2 * img_height)
-    df['width'] = (df['x_max'] - df['x_min']) / img_width
-    df['height'] = (df['y_max'] - df['y_min']) / img_height
+    df['x_center'] = (df['x_min'] + df['x_max']) / (2 * df['img_width'])
+    df['y_center'] = (df['y_min'] + df['y_max']) / (2 * df['img_height'])
+    df['width'] = (df['x_max'] - df['x_min']) / df['img_width']
+    df['height'] = (df['y_max'] - df['y_min']) / df['img_height']
     df['object_class'] = 0
     return df
     # x_min, y_min, x_max, y_max = bounding_box
@@ -86,26 +99,22 @@ def preprocess_lisa_dataset(lisa_dir: str) -> None:
         # call annotation reader function
         if not train:
             annotation_path = f"{lisa_dir}/Annotations/Annotations/{dataset_name}/frameAnnotationsBOX.csv"
-            dataset_frame = read_annotations(annotation_path, dataset_frame)
+            img_path = f"{lisa_dir}/{dataset_name}/{dataset_name}/frames/{dataset_name}--00000.jpg"
+            dataset_frame = read_data(annotation_path, dataset_frame, img_path)
+
         else:
             # walk through all subdirectories in the train directory
-            for root, dirs, files in os.walk(f"{lisa_dir}/Annotations/Annotations/{dataset_name}"):
+            for _, dirs, _ in os.walk(f"{lisa_dir}/Annotations/Annotations/{dataset_name}"):
                 for dir in dirs:
                     if dir not in walked_dirs:
                         walked_dirs.append(dir)
                         annotation_path = f"{lisa_dir}/Annotations/Annotations/{dataset_name}/{dir}/frameAnnotationsBOX.csv"
-                        dataset_frame = read_annotations(annotation_path, dataset_frame)
+                        img_path = f"{lisa_dir}/{dataset_name}/{dataset_name}/{dir}/frames/{dir}--00000.jpg"
+                        dataset_frame = read_data(annotation_path, dataset_frame, img_path)
+
 
         # convert to YOLO
-        dataset_frame = convert_to_yolo_format(dataset_frame, 1280, 960)
-
-        # strip img names of prefix directory
-        # if not train:
-        #     dataset_frame['Filename'] = dataset_frame['Filename'].str.replace(fr'^.*?({dataset_name})', r'\1',
-        #                                                                 regex=True)
-        # else:
-        #     dataset_frame['Filename'] = dataset_frame['Filename'].str.replace(fr'^.*?({dataset_name})', r'\1',
-        #                                                                 regex=True)
+        dataset_frame = convert_to_yolo_format(dataset_frame)
 
         img_file_names = dataset_frame['Filename'].values
 
