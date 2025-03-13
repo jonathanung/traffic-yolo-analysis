@@ -34,7 +34,9 @@ def read_data(annotation_path: str, df: pd.DataFrame, img_path: str)->pd.DataFra
     new_df['img_height'] = img_height
 
     # Extract filename from path
-    new_df['Filename'] = new_df['Filename'].apply(lambda x: x.split('/')[-1] if '/' in x else x)
+    new_df['filetype'] = new_df['Filename'].apply(lambda x: x.split('.')[-1])
+
+    new_df['Filename'] = new_df['Filename'].apply(lambda x: x.split('/')[-1] if '/' in x else x).apply(lambda x: x.split('.')[0])
 
     # from img_path, remove everything after trailing '/'
     img_path = img_path.split('/')[:-1]
@@ -58,6 +60,7 @@ def convert_to_yolo_format(df: pd.DataFrame) -> pd.DataFrame:
     df['y_center'] = (df['y_min'] + df['y_max']) / (2 * df['img_height'])
     df['width'] = (df['x_max'] - df['x_min']) / df['img_width']
     df['height'] = (df['y_max'] - df['y_min']) / df['img_height']
+    # add object class column with zeros to determine classification type (and since its only traffic lights, 0)
     df['object_class'] = 0
     return df
     # x_min, y_min, x_max, y_max = bounding_box
@@ -120,12 +123,13 @@ def preprocess_lisa_dataset(lisa_dir: str) -> None:
 
         print(dataset_frame)
 
+        # FOR DEBUGGING: export df to csv
+        dataset_frame.to_csv('dataset_frame.csv', index=False)
+
         # TODO: split data into new YOLO train/validate sets
 
 
         ### COULD BE DELETED ###
-        # inserting class column with zereos
-        dataset_frame['object_class'] = 0
 
         # prep df to be exported as .txt
         dataset_frame = dataset_frame[['object_class', 'x_center', 'y_center', 'width', 'height']]
