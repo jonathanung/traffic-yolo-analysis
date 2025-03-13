@@ -62,9 +62,21 @@ def preprocess_lisa_dataset(lisa_dir: str) -> None:
     - Split into train/val/test sets
     """
     # TODO: Implement LISA dataset preprocessing
-    dataset_names = ['daySequence1', 'daySequence2', 'nightSequence1', 'nightSequence2']
 
-    for dataset in dataset_names:
+    datasets = [
+        {'name' : 'daySequence1', 'train' : False},
+        {'name' : 'daySequence2', 'train' : False},
+        {'name' : 'dayTrain', 'train' : True},
+        {'name' : 'nightSequence1', 'train' : False},
+        {'name' : 'nightSequence2', 'train' : False},
+        {'name' : 'nightTrain', 'train' : True},
+    ]
+    
+    # dataset_names = ['daySequence1', 'daySequence2', 'nightSequence1', 'nightSequence2']
+
+    for dataset_struct in datasets:
+        dataset: str = dataset_struct['name']
+        train: bool = dataset_struct['train']
 
         # call annotation reader function
         annotation_path = f"{lisa_dir}/Annotations/Annotations/{dataset}/frameAnnotationsBOX.csv"
@@ -78,7 +90,6 @@ def preprocess_lisa_dataset(lisa_dir: str) -> None:
                                                                         regex=True)
 
         img_file_names = dataset_data['Filename'].values
-
 
         # TODO: split data into new YOLO train/validate sets
 
