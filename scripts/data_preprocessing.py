@@ -27,27 +27,31 @@ def read_annotations(annotation_path: str)->pd.DataFrame:
 
     df = df.rename(columns={
         'Upper left corner X': 'x_min',
-        'Upper left corner Y': 'y_max',
+        'Upper left corner Y': 'y_min',
         'Lower right corner X': 'x_max',
-        'Lower right corner Y': 'y_min'
+        'Lower right corner Y': 'y_max'
     })
     return df
 
 
-def convert_to_yolo_format(img_width: int, img_height: int, bounding_box: List[int]) -> List[float]:
+def convert_to_yolo_format(df: pd.DataFrame, img_width: int, img_height: int) -> pd.DataFrame:
     """
     Convert bounding box coordinates to YOLO format.
     Returns a list of floats [x_center, y_center, width, height]
     """
-
-    x_min, y_min, x_max, y_max = bounding_box
-
-    x_center = (x_min + x_max) / (2 * img_width)
-    y_center = (y_min + y_max) / (2 * img_height)
-    width = (x_max - x_min) / img_width
-    height = (y_max - y_min) / img_height
-
-    return [x_center, y_center, width, height]
+    df['x_center'] = (df['x_min'] + df['x_max']) / (2 * img_width)
+    df['y_center'] = (df['y_min'] + df['y_max']) / (2 * img_height)
+    df['width'] = (df['x_max'] - df['x_min']) / img_width
+    df['height'] = (df['y_max'] - df['y_min']) / img_height
+    return df
+    # x_min, y_min, x_max, y_max = bounding_box
+    #
+    # x_center = (x_min + x_max) / (2 * img_width)
+    # y_center = (y_min + y_max) / (2 * img_height)
+    # width = (x_max - x_min) / img_width
+    # height = (y_max - y_min) / img_height
+    #
+    # return [x_center, y_center, width, height]
 
 
 def preprocess_lisa_dataset(lisa_dir: str) -> None:
@@ -66,16 +70,17 @@ def preprocess_lisa_dataset(lisa_dir: str) -> None:
         annotation_path = f"{lisa_dir}/Annotations/Annotations/{dataset}/frameAnnotationsBOX.csv"
         # print(annotation_path)
         dataset_data = read_annotations(annotation_path)
+        convert_to_yolo_format(dataset_data, 1280, 960)
         print(dataset_data)
 
-        for dirpath, _, filenames in os.walk(dataset_dir):
-            i = 0
-            for IMGname in filenames:
-                img_path = os.path.join(dirpath, IMGname)
-                pattern = fr'{IMGname}'
-                if dataset_data['Filename'].str.contains(pattern, na=False, regex=True).any() and i < 5:
-                    print(img_path)
-                i += 1
+        # for dirpath, _, filenames in os.walk(dataset_dir):
+        #     i = 0
+        #     for IMGname in filenames:
+        #         img_path = os.path.join(dirpath, IMGname)
+        #         pattern = fr'{IMGname}'
+        #         if dataset_data['Filename'].str.contains(pattern, na=False, regex=True).any() and i < 5:
+        #             print(img_path)
+        #         i += 1
 
     # img_width, img_height = get_image_size(###)
     #
