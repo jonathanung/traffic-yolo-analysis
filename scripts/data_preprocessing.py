@@ -7,6 +7,33 @@ from pathlib import Path
 from typing import Tuple, List, Dict
 from PIL import Image
 import shutil
+import yaml
+
+
+def create_yaml(output_dir: str, dataset_name: str) -> None:
+
+    img_path = f"{output_dir}/{dataset_name}/images"
+    labels_path = f"{output_dir}/{dataset_name}/labels"
+
+
+    # Get class names (or use a default list) 
+    class_names = ["traffic_light"]
+
+    yaml_data = {
+        "train_img": img_path,
+        "train_label": labels_path,
+        "nc": len(class_names),
+        "names": class_names,
+    }
+
+    dataset_path = f"{output_dir}/{dataset_name}"
+    yaml_path = Path(dataset_path) / f"{dataset_name}.yaml"
+    with open(yaml_path, "w") as yaml_file:
+        yaml.dump(yaml_data, yaml_file, default_flow_style=False)
+
+    print(f"Generated: {yaml_path}")
+
+
 
 
 def get_image_size(image_path: str) -> tuple:
@@ -135,16 +162,14 @@ def preprocess_lisa_dataset(lisa_dir: str) -> None:
 def export_yolo_data(lisa_dir: str, output_dir: str, dataset_name: str, df: pd.DataFrame) -> None:
     """
     Export YOLO data to a directory by copying images directly from the raw folder.
-    - Copy images to output_dir/images/{dataset_name}/...
+    - Copy images to output_dir/{dataset_name}/images/...
     - For dayTrain and nightTrain, place all subdirectory images under the same parent
     - Create directory structure for YOLO training
     """
-    # Create base output directories
-    os.makedirs(f"{output_dir}/images", exist_ok=True)
-    os.makedirs(f"{output_dir}/labels", exist_ok=True)
-    
-    # Create dataset-specific directories
-    os.makedirs(f"{output_dir}/images/{dataset_name}", exist_ok=True)
+    create_yaml(output_dir, dataset_name)
+    # Create images and label dataset-specific directories
+    os.makedirs(f"{output_dir}/{dataset_name}/images", exist_ok=True)
+    os.makedirs(f"{output_dir}/{dataset_name}/labels", exist_ok=True)
     
     # Find all images in the dataset directory
     image_extensions = ['.jpg', '.jpeg', '.png', '.bmp']
@@ -184,34 +209,33 @@ def export_yolo_data(lisa_dir: str, output_dir: str, dataset_name: str, df: pd.D
     for img_path in image_files:
         # Get just the filename without path
         filename = img_path.name
-        
+
         # Destination path - all images go directly under the dataset directory
-        dst_path = f"{output_dir}/images/{dataset_name}/{filename}"
-        
+        dst_path = f"{output_dir}/{dataset_name}/images/{filename}"
+
         # Copy the image
         try:
             shutil.copy2(img_path, dst_path)
             copied_count += 1
         except Exception as e:
             print(f"Error copying {img_path} to {dst_path}: {e}")
-    
+
     print(f"Exported {copied_count} images to {output_dir}/images/{dataset_name}")
-    
-    # Create labels directory
-    labels_dir = f"{output_dir}/labels/{dataset_name}"
-    os.makedirs(labels_dir, exist_ok=True)
+
 
     # Group by filename to handle multiple objects in the same image
     grouped = df.groupby('Filename')
     label_count = 0
-    
+    labels_dir = f"{output_dir}/{dataset_name}/labels"
+
     for filename, group in grouped:
+
         # Remove file extension if present
         base_filename = filename.split('.')[0] if '.' in filename else filename
-        
+
+
         # Create label file path
         label_path = f"{labels_dir}/{base_filename}.txt"
-        
         # Write all objects for this image to the label file
         with open(label_path, 'w') as f:
             for _, row in group.iterrows():
