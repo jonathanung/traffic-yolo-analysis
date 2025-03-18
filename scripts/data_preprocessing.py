@@ -11,10 +11,12 @@ import yaml
 
 
 def create_yaml(output_dir: str, dataset_name: str) -> None:
+    # Create the dataset directory if it doesn't exist
+    dataset_path = f"{output_dir}/{dataset_name}"
+    Path(dataset_path).mkdir(parents=True, exist_ok=True)
 
     img_path = f"{output_dir}/{dataset_name}/images"
     labels_path = f"{output_dir}/{dataset_name}/labels"
-
 
     # Get class names (or use a default list) 
     class_names = ["traffic_light"]
