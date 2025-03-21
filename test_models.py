@@ -46,7 +46,10 @@ def find_best_weights(model_version):
     elif model_version == 'v5':
         weights_path = project_root / 'models/yolov5/runs/train/lisa_traffic_light/weights/best.pt'
     else:  # v8
-        weights_path = project_root / 'runs/detect/lisa_traffic_light/weights/best.pt'
+        weights_path = project_root / 'runs/train/lisa_traffic_light/weights/best.pt'
+        # Try alternative paths if not found
+        if not weights_path.exists():
+            weights_path = project_root / 'runs/detect/lisa_traffic_light/weights/best.pt'
     
     if weights_path.exists():
         return str(weights_path)
@@ -65,9 +68,20 @@ def find_best_weights(model_version):
     
     raise FileNotFoundError(f"No weights found for YOLO{model_version}")
 
-def load_model(model_version, weights_path, device):
+def load_model(model_version, weights_path, device_str):
     """Load the appropriate YOLO model"""
     print(f"Loading YOLO{model_version} model from {weights_path}")
+    
+    # Convert device string to torch.device
+    if device_str == '':
+        device = torch.device('cuda:0' if torch.cuda.is_available() else 
+                             'mps' if torch.backends.mps.is_available() else 'cpu')
+    elif device_str.isdigit():  # If just a number like '0'
+        device = torch.device(f'cuda:{device_str}' if torch.cuda.is_available() else 'cpu')
+    else:
+        device = torch.device(device_str)
+    
+    print(f"Using device: {device}")
     
     if model_version == 'v3':
         # Add yolov3 directory to path temporarily
@@ -87,7 +101,7 @@ def load_model(model_version, weights_path, device):
         from ultralytics import YOLO
         model = YOLO(weights_path)
     
-    return model
+    return model, device
 
 def run_inference(model, model_version, test_set_path, img_size, conf_thresh, iou_thresh, device, save_txt, save_imgs, output_dir):
     """Run inference on a test set and save results"""
@@ -105,6 +119,8 @@ def run_inference(model, model_version, test_set_path, img_size, conf_thresh, io
     
     # Create output directories
     results_dir = Path(output_dir) / f"yolo{model_version}" / test_set_path.name
+    os.makedirs(results_dir, exist_ok=True)  # Create main results dir
+    
     txt_dir = results_dir / 'labels'
     img_dir = results_dir / 'visualization'
     
@@ -227,12 +243,8 @@ def main():
     if not args.weights:
         args.weights = find_best_weights(args.model_version)
     
-    # Set device
-    if not args.device:
-        args.device = 'cuda:0' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
-    
     # Load model
-    model = load_model(args.model_version, args.weights, args.device)
+    model, device = load_model(args.model_version, args.weights, args.device)
     
     # Create output directory
     os.makedirs(args.output_dir, exist_ok=True)
@@ -258,7 +270,7 @@ def main():
             img_size=args.img_size,
             conf_thresh=args.conf,
             iou_thresh=args.iou,
-            device=args.device,
+            device=device,
             save_txt=args.save_txt,
             save_imgs=args.save_imgs,
             output_dir=args.output_dir
