@@ -37,7 +37,7 @@ def main():
     # Import YOLOv3-specific modules
     try:
         from models.experimental import attempt_load
-        from utils.general import non_max_suppression, scale_coords
+        from utils.general import non_max_suppression, scale_boxes
         from utils.augmentations import letterbox
     except ImportError as e:
         print(f"Error importing YOLOv3 modules: {e}")
@@ -137,7 +137,7 @@ def main():
             if len(pred[0]) > 0:
                 # Rescale boxes from model size to original image size
                 det = pred[0].clone()
-                det[:, :4] = scale_coords(img.shape[2:], det[:, :4], orig_img.shape).round()
+                det[:, :4] = scale_boxes(img.shape[2:], det[:, :4], orig_img.shape).round()
                 
                 # Process each detection
                 with open(txt_dir / f"{img_file.stem}.txt", 'w') as f:

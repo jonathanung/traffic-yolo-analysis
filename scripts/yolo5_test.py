@@ -37,7 +37,7 @@ def main():
     # Import YOLOv5-specific modules
     try:
         from models.common import DetectMultiBackend
-        from utils.general import non_max_suppression, scale_coords
+        from utils.general import non_max_suppression, scale_boxes
         from utils.augmentations import letterbox
         from utils.torch_utils import select_device
     except ImportError as e:
@@ -136,7 +136,7 @@ def main():
             if len(pred[0]) > 0:
                 # Rescale boxes from model size to original image size
                 det = pred[0].clone()
-                det[:, :4] = scale_coords(img.shape[2:], det[:, :4], orig_img.shape).round()
+                det[:, :4] = scale_boxes(img.shape[2:], det[:, :4], orig_img.shape).round()
                 
                 # Process each detection
                 with open(txt_dir / f"{img_file.stem}.txt", 'w') as f:
