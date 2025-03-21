@@ -164,9 +164,36 @@ def run_inference(model, model_version, test_set_path, img_size, conf_thresh, io
             results = model(str(img_file), conf=conf_thresh, iou=iou_thresh, imgsz=img_size)
             img = cv2.imread(str(img_file))
             
-            # Get detections
+            # Get detections - handle properly for YOLOv8
+            detections = []
             if results[0].boxes is not None and len(results[0].boxes) > 0:
-                detections = results[0].boxes.data.cpu().numpy()
+                # Extract boxes, confidence scores, and class IDs
+                boxes = results[0].boxes
+                for i in range(len(boxes)):
+                    try:
+                        # Get coordinates (convert from xywh to xyxy if needed)
+                        if hasattr(boxes, 'xywh'):
+                            # If in xywh format, convert to xyxy
+                            xywh = boxes.xywh[i].cpu().numpy()
+                            x1 = xywh[0] - xywh[2]/2
+                            y1 = xywh[1] - xywh[3]/2
+                            x2 = xywh[0] + xywh[2]/2
+                            y2 = xywh[1] + xywh[3]/2
+                        else:
+                            # If already in xyxy format
+                            xyxy = boxes.xyxy[i].cpu().numpy()
+                            x1, y1, x2, y2 = xyxy[0], xyxy[1], xyxy[2], xyxy[3]
+                        
+                        # Get confidence and class
+                        conf = float(boxes.conf[i].cpu().numpy())
+                        cls = int(boxes.cls[i].cpu().numpy()) if hasattr(boxes, 'cls') else 0
+                        
+                        detections.append([x1, y1, x2, y2, conf, cls])
+                    except Exception as e:
+                        print(f"Error processing detection {i}: {e}")
+                        continue
+                
+                detections = np.array(detections)
             else:
                 detections = np.empty((0, 6))
         
