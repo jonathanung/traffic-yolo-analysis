@@ -164,72 +164,39 @@ def run_inference(model, model_version, test_set_path, img_size, conf_thresh, io
             results = model(str(img_file), conf=conf_thresh, iou=iou_thresh, imgsz=img_size)
             img = cv2.imread(str(img_file))
             
-            # Initialize empty detections array
+            # Get detections safely for YOLOv8
             detections = []
             
-            # Process YOLOv8 results more safely
-            if results and len(results) > 0:
-                # YOLOv8 result format changed in different versions
-                result = results[0]  # First image result
+            # Handle YOLOv8 results
+            if len(results) > 0:
+                boxes = results[0].boxes  # Get boxes from first image result
                 
-                if hasattr(result, 'boxes') and result.boxes is not None and len(result.boxes) > 0:
-                    # Extract boxes data
-                    boxes = result.boxes
-                    
+                if boxes is not None and len(boxes) > 0:
+                    # Convert boxes to the format we need
                     try:
-                        # Get coordinates in xyxy format - safer approach
-                        if hasattr(boxes, 'xyxy') and boxes.xyxy is not None and len(boxes.xyxy) > 0:
-                            for i in range(len(boxes.xyxy)):
-                                xyxy = boxes.xyxy[i].cpu().numpy()
-                                conf = float(boxes.conf[i].cpu().numpy()) if hasattr(boxes, 'conf') else 0.0
-                                cls = int(boxes.cls[i].cpu().numpy()) if hasattr(boxes, 'cls') else 0
-                                
-                                # Create detection in expected format [x1, y1, x2, y2, conf, cls]
-                                detections.append([xyxy[0], xyxy[1], xyxy[2], xyxy[3], conf, cls])
-                        
-                        # If boxes are in a different format or the above failed
-                        elif hasattr(result, 'orig_img') and hasattr(result, 'boxes'):
-                            # Get the plotted image with boxes directly from YOLOv8
-                            if save_imgs:
-                                # Use YOLOv8's built-in visualization instead
-                                res_plotted = result.plot()
-                                cv2.imwrite(str(img_dir / img_file.name), res_plotted)
+                        # Get boxes in xyxy format (x1, y1, x2, y2)
+                        if hasattr(boxes, 'xyxy') and boxes.xyxy is not None:
+                            xyxy_boxes = boxes.xyxy.cpu().numpy()
                             
-                            # For the data format needed for the JSON
-                            for i in range(len(boxes)):
-                                if hasattr(boxes, 'xywh') and len(boxes.xywh) > i:
-                                    # Convert xywh to xyxy format
-                                    xywh = boxes.xywh[i].cpu().numpy()
-                                    x1 = float(xywh[0] - xywh[2]/2)
-                                    y1 = float(xywh[1] - xywh[3]/2)
-                                    x2 = float(xywh[0] + xywh[2]/2)
-                                    y2 = float(xywh[1] + xywh[3]/2)
-                                    conf = float(boxes.conf[i].cpu().numpy()) if hasattr(boxes, 'conf') else 0.0
-                                    cls = int(boxes.cls[i].cpu().numpy()) if hasattr(boxes, 'cls') else 0
-                                    
-                                    detections.append([x1, y1, x2, y2, conf, cls])
-                    
+                            # Get confidences and class IDs
+                            conf_values = boxes.conf.cpu().numpy() if hasattr(boxes, 'conf') else np.ones(len(xyxy_boxes))
+                            cls_values = boxes.cls.cpu().numpy() if hasattr(boxes, 'cls') else np.zeros(len(xyxy_boxes))
+                            
+                            # Create detection array in the expected format
+                            for i in range(len(xyxy_boxes)):
+                                x1, y1, x2, y2 = xyxy_boxes[i]
+                                conf = conf_values[i]
+                                cls = int(cls_values[i])
+                                detections.append([x1, y1, x2, y2, conf, cls])
+                        
+                        detections = np.array(detections) if detections else np.empty((0, 6))
                     except Exception as e:
                         print(f"Error processing YOLOv8 detections: {e}")
-                        # Use YOLOv8's visualization as fallback
-                        if save_imgs:
-                            res_plotted = result.plot()
-                            cv2.imwrite(str(img_dir / img_file.name), res_plotted)
-                
-                # Convert to numpy array if we have detections
-                detections = np.array(detections) if detections else np.empty((0, 6))
-                
-                # Skip drawing on image if we already saved it using YOLOv8's built-in plotting
-                if save_imgs and len(detections) > 0 and not (hasattr(result, 'orig_img') and hasattr(result, 'boxes')):
-                    for det in detections:
-                        x1, y1, x2, y2, conf, cls = det
-                        # Convert to int for drawing
-                        x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
-                        cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                        cv2.putText(img, f"Traffic Light {conf:.2f}", (x1, y1 - 10), 
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-                    
-                    cv2.imwrite(str(img_dir / img_file.name), img)
+                        detections = np.empty((0, 6))
+                else:
+                    detections = np.empty((0, 6))
+            else:
+                detections = np.empty((0, 6))
         
         # Convert to YOLO format and save
         orig_height, orig_width = img.shape[:2]
