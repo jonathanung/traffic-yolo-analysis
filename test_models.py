@@ -46,7 +46,7 @@ def find_best_weights(model_version):
     elif model_version == 'v5':
         weights_path = project_root / 'models/yolov5/runs/train/lisa_traffic_light/weights/best.pt'
     else:  # v8
-        weights_path = project_root / 'runs/train/lisa_traffic_light/weights/best.pt'
+        weights_path = project_root / 'runs/detect/lisa_traffic_light/weights/best.pt'
     
     if weights_path.exists():
         return str(weights_path)
