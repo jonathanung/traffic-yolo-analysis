@@ -164,38 +164,72 @@ def run_inference(model, model_version, test_set_path, img_size, conf_thresh, io
             results = model(str(img_file), conf=conf_thresh, iou=iou_thresh, imgsz=img_size)
             img = cv2.imread(str(img_file))
             
-            # Get detections - handle properly for YOLOv8
+            # Initialize empty detections array
             detections = []
-            if results[0].boxes is not None and len(results[0].boxes) > 0:
-                # Extract boxes, confidence scores, and class IDs
-                boxes = results[0].boxes
-                for i in range(len(boxes)):
-                    try:
-                        # Get coordinates (convert from xywh to xyxy if needed)
-                        if hasattr(boxes, 'xywh'):
-                            # If in xywh format, convert to xyxy
-                            xywh = boxes.xywh[i].cpu().numpy()
-                            x1 = xywh[0] - xywh[2]/2
-                            y1 = xywh[1] - xywh[3]/2
-                            x2 = xywh[0] + xywh[2]/2
-                            y2 = xywh[1] + xywh[3]/2
-                        else:
-                            # If already in xyxy format
-                            xyxy = boxes.xyxy[i].cpu().numpy()
-                            x1, y1, x2, y2 = xyxy[0], xyxy[1], xyxy[2], xyxy[3]
-                        
-                        # Get confidence and class
-                        conf = float(boxes.conf[i].cpu().numpy())
-                        cls = int(boxes.cls[i].cpu().numpy()) if hasattr(boxes, 'cls') else 0
-                        
-                        detections.append([x1, y1, x2, y2, conf, cls])
-                    except Exception as e:
-                        print(f"Error processing detection {i}: {e}")
-                        continue
+            
+            # Process YOLOv8 results more safely
+            if results and len(results) > 0:
+                # YOLOv8 result format changed in different versions
+                result = results[0]  # First image result
                 
-                detections = np.array(detections)
-            else:
-                detections = np.empty((0, 6))
+                if hasattr(result, 'boxes') and result.boxes is not None and len(result.boxes) > 0:
+                    # Extract boxes data
+                    boxes = result.boxes
+                    
+                    try:
+                        # Get coordinates in xyxy format - safer approach
+                        if hasattr(boxes, 'xyxy') and boxes.xyxy is not None and len(boxes.xyxy) > 0:
+                            for i in range(len(boxes.xyxy)):
+                                xyxy = boxes.xyxy[i].cpu().numpy()
+                                conf = float(boxes.conf[i].cpu().numpy()) if hasattr(boxes, 'conf') else 0.0
+                                cls = int(boxes.cls[i].cpu().numpy()) if hasattr(boxes, 'cls') else 0
+                                
+                                # Create detection in expected format [x1, y1, x2, y2, conf, cls]
+                                detections.append([xyxy[0], xyxy[1], xyxy[2], xyxy[3], conf, cls])
+                        
+                        # If boxes are in a different format or the above failed
+                        elif hasattr(result, 'orig_img') and hasattr(result, 'boxes'):
+                            # Get the plotted image with boxes directly from YOLOv8
+                            if save_imgs:
+                                # Use YOLOv8's built-in visualization instead
+                                res_plotted = result.plot()
+                                cv2.imwrite(str(img_dir / img_file.name), res_plotted)
+                            
+                            # For the data format needed for the JSON
+                            for i in range(len(boxes)):
+                                if hasattr(boxes, 'xywh') and len(boxes.xywh) > i:
+                                    # Convert xywh to xyxy format
+                                    xywh = boxes.xywh[i].cpu().numpy()
+                                    x1 = float(xywh[0] - xywh[2]/2)
+                                    y1 = float(xywh[1] - xywh[3]/2)
+                                    x2 = float(xywh[0] + xywh[2]/2)
+                                    y2 = float(xywh[1] + xywh[3]/2)
+                                    conf = float(boxes.conf[i].cpu().numpy()) if hasattr(boxes, 'conf') else 0.0
+                                    cls = int(boxes.cls[i].cpu().numpy()) if hasattr(boxes, 'cls') else 0
+                                    
+                                    detections.append([x1, y1, x2, y2, conf, cls])
+                    
+                    except Exception as e:
+                        print(f"Error processing YOLOv8 detections: {e}")
+                        # Use YOLOv8's visualization as fallback
+                        if save_imgs:
+                            res_plotted = result.plot()
+                            cv2.imwrite(str(img_dir / img_file.name), res_plotted)
+                
+                # Convert to numpy array if we have detections
+                detections = np.array(detections) if detections else np.empty((0, 6))
+                
+                # Skip drawing on image if we already saved it using YOLOv8's built-in plotting
+                if save_imgs and len(detections) > 0 and not (hasattr(result, 'orig_img') and hasattr(result, 'boxes')):
+                    for det in detections:
+                        x1, y1, x2, y2, conf, cls = det
+                        # Convert to int for drawing
+                        x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
+                        cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                        cv2.putText(img, f"Traffic Light {conf:.2f}", (x1, y1 - 10), 
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                    
+                    cv2.imwrite(str(img_dir / img_file.name), img)
         
         # Convert to YOLO format and save
         orig_height, orig_width = img.shape[:2]
@@ -232,26 +266,6 @@ def run_inference(model, model_version, test_set_path, img_size, conf_thresh, io
                         'confidence': float(conf),
                         'bbox': [float(x_center), float(y_center), float(width), float(height)]
                     })
-        
-        # Save visualization image
-        if save_imgs:
-            for det in detections:
-                if model_version in ['v3', 'v5']:
-                    x1, y1, x2, y2, conf, cls = det
-                else:  # v8
-                    if det.shape[1] == 6:
-                        x1, y1, x2, y2, conf, cls = det
-                    else:
-                        x1, y1, x2, y2, conf = det
-                        cls = 0
-                
-                # Convert back to absolute coordinates for drawing
-                x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
-                cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                cv2.putText(img, f"Traffic Light {conf:.2f}", (x1, y1 - 10), 
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-            
-            cv2.imwrite(str(img_dir / img_file.name), img)
         
         all_predictions.extend(img_predictions)
     
