@@ -11,7 +11,7 @@ yolo_traffic_detection/
 │   ├── model_inference.py
 │   ├── evaluation.py
 │   └── visualization.py
-├── results/                # Output directory for results
+├── results/                # Output directory for results from testing
 ├── README.md               # Project documentation
 └── requirements.txt        # Dependencies
 ```
