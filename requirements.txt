@@ -10,9 +10,15 @@ opencv-python
 numpy
 seaborn
 ultralytics
+PyYAML  # Required for YAML processing in your test_models.py
+tqdm    # Used for progress bars in test_models.py
 
 # For Data
 pandas
 scikit-learn
 scikit-image
 matplotlib
+
+# Other dependencies
+Pillow  # Required for image processing
+pathlib # Used for path handling (included in Python std lib but listed for clarity)

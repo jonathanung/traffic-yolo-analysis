@@ -1,6 +1,21 @@
 data/
+data/*
 .DS_Store
 
 *.pt
 models/*/weights/
 models/ultralytics/*/weights/
+
+runs/
+runs/*
+
+
+LISA-YOLOv3/
+LISA-YOLOv5/
+LISA-YOLOv8/
+
+results/
+my_results/
+
+venv/
+__pycache__/

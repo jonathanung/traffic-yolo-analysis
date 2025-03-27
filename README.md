@@ -8,6 +8,8 @@ git clone https://github.com/jonathanung/traffic-yolo-analysis --recurse-submodu
 Install weights using instructions from [MODELS.md](MODELS.md).
 
 ### Hotlinks
+[MARKERS_GO_HERE](MARKER_HOWTO.MD)
+
 [MODELS](MODELS.md)
 
 [STRUCTURE](STRUCTURE.md)
