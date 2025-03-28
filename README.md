@@ -16,7 +16,9 @@ Install weights using instructions from [MODELS.md](MODELS.md).
 
 [DATA](DATA.md)
 
-[SCRIPTS](scripts/README.md)
+[DATA COLLECTION SCRIPTS](data_collection_scripts/README.md)
+
+[DATA PROCESSING SCRIPTS](data_processing_scripts/README.md)
 
 ## Project Proposal: Evaluating YOLO for Traffic Light Detection Under Varied Conditions
 
