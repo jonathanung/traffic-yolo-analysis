@@ -15,3 +15,7 @@ Converts the labels of the processed data into a CSV format (this is the "ground
 ### sort_label_csvs.py
 
 Sorts all the CSVs rows by category, then img id, then bbox center coordinate.
+
+## matching.py
+
+Matches rows in the CSVs from model to truth, and outputs CSVs for data analysis.
