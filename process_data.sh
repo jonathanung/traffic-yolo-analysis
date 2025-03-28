@@ -14,5 +14,5 @@ python ./data_processing_scripts/lisa_processed_label2csv.py
 python ./data_processing_scripts/sort_label_csv.py
 
 # Match the YOLO and Processed YOLOxLISA data
-# python ./data_processing_scripts/lisa_yolo_val_match.py
+# python ./data_processing_scripts/matching.py
 # TODO: Add the matching script
