@@ -1,6 +1,8 @@
-# Scripts
+# Data Collection Scripts
 
-This directory contains various utility scripts for the traffic light detection project.
+This directory contains various utility scripts for the traffic light classification analyis
+
+# PLEASE NOTE ALL SCRIPTS SHOULD BE RUN FROM PROJECT ROOT
 
 ## Data Processing Scripts
 

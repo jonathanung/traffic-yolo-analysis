@@ -17,6 +17,7 @@ tqdm    # Used for progress bars in test_models.py
 pandas
 scikit-learn
 scikit-image
+seaborn
 matplotlib
 
 # Other dependencies

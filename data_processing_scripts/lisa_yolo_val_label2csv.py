@@ -36,8 +36,8 @@ def convert_results_to_csv(yolo_path: str, yolo_models: list, dataset_names: lis
 
 def main():
     # create a new output directory
-    os.makedirs("data/postprocessing/", exist_ok=True)
-    YOLO_PATH = f"data/pre_analysis/"
+    os.makedirs("data/label2csv/", exist_ok=True)
+    YOLO_PATH = f"data/results/"
     YOLO_MODELS = ['yolov3', 'yolov5', 'yolov8']
     DATASETS_NAMES = ['daySequence1', 'daySequence2', 'nightSequence1', 'nightSequence2']
 
