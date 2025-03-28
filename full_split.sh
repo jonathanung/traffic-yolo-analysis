@@ -4,10 +4,10 @@
 # Evaluation scripts will be run separately
 
 # Download the data
-python ./scripts/download_data.py
+python ./data_collection_scripts/download_data.py
 
 # Process the data
-python ./scripts/process_data.py
+python ./data_collection_scripts/process_data.py
 
 # Data is already split by default, as given by authors of LISA
 
