@@ -46,9 +46,10 @@ def calculate_center_distance(box1, box2):
 
 def return_matching_csvs(model_csv: str, ground_truth_csv: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
-    Returns DataFrames for matched model predictions, matched ground truth, 
+    Returns DataFrames for matched model predictions, matched ground truth,
     misclassified detections, and missing ground truth boxes.
-    
+
+    Iterates over all image IDs present in either ground truth or predictions.
     First attempts IoU matching, then falls back to closest center distance for remaining boxes.
     """
     # Read and prepare dataframes
@@ -56,8 +57,26 @@ def return_matching_csvs(model_csv: str, ground_truth_csv: str) -> tuple[pd.Data
     ground_truth_df = pd.read_csv(ground_truth_csv)
 
     yolo_cols = ['dataset', 'img_id', 'class_id', 'x_center', 'y_center', 'width', 'height', 'confidence']
+    # Ensure consistent column names and handle potential missing confidence in GT
     model_df.columns = yolo_cols
-    ground_truth_df.columns = yolo_cols
+    # Read ground truth without assuming confidence, then add it if missing
+    gt_cols_read = ['dataset', 'img_id', 'class_id', 'x_center', 'y_center', 'width', 'height']
+    try:
+        # Try reading with confidence first
+         ground_truth_df = pd.read_csv(ground_truth_csv, names=yolo_cols, header=0) # Read with header=0 since sort script wrote without
+    except Exception: # Fallback if confidence is missing or header issue
+        try:
+             ground_truth_df = pd.read_csv(ground_truth_csv, names=gt_cols_read, header=None)
+             ground_truth_df['confidence'] = 1.0 # Add confidence for GT
+        except Exception as e_read:
+             print(f"Error reading ground truth CSV {ground_truth_csv}: {e_read}")
+             # Return empty dataframes if GT cannot be read
+             empty_df = pd.DataFrame(columns=yolo_cols)
+             return empty_df, empty_df, empty_df, empty_df
+
+    # Ensure correct column order
+    ground_truth_df = ground_truth_df[yolo_cols]
+
 
     # Initialize lists to store matches and mismatches
     yolo_matches = []
@@ -65,92 +84,113 @@ def return_matching_csvs(model_csv: str, ground_truth_csv: str) -> tuple[pd.Data
     missing_matches = []
     misclassified = []
 
-    # Group by dataset and image_id
+    # Process each dataset sequence
     for dataset in ['daySequence1', 'daySequence2', 'nightSequence1', 'nightSequence2']:
         model_dataset = model_df[model_df['dataset'] == dataset]
         truth_dataset = ground_truth_df[ground_truth_df['dataset'] == dataset]
-        
-        # Process each image in the dataset
-        for img_id in truth_dataset['img_id'].unique():
+
+        # --- MODIFICATION START: Iterate over UNION of image IDs ---
+        all_img_ids_in_dataset = pd.Index(model_dataset['img_id'].unique()).union(
+                                  pd.Index(truth_dataset['img_id'].unique()))
+        # --- MODIFICATION END ---
+
+        # Process each image ID present in either ground truth or model predictions
+        for img_id in all_img_ids_in_dataset:
             current_model = model_dataset[model_dataset['img_id'] == img_id].copy()
             current_truth = truth_dataset[truth_dataset['img_id'] == img_id].copy()
-            
-            # Skip if no ground truth boxes
-            if len(current_truth) == 0:
-                if len(current_model) > 0:
+
+            # Case 1: No ground truth for this image ID, all predictions are misclassified
+            if current_truth.empty:
+                if not current_model.empty:
                     misclassified.extend(current_model.to_dict('records'))
-                continue
-            
-            # Track which boxes have been matched
+                continue # Move to the next image ID
+
+            # Case 2: No predictions for this image ID, all ground truth are missing
+            if current_model.empty:
+                # This case is implicitly handled later when unmatched_truth is calculated,
+                # but we could add it here explicitly if desired:
+                # missing_matches.extend(current_truth.to_dict('records'))
+                # continue # Actually, let the standard logic handle this below
+                pass # Let standard logic below handle adding these to missing
+
+            # Case 3: Both ground truth and predictions exist - proceed with matching
             model_matched = set()
             truth_matched = set()
-            
+
             # First pass: IoU matching
             for truth_idx, truth_box in current_truth.iterrows():
-                best_iou = 0.5  # Minimum IoU threshold for matching
-                best_model_idx = None
-                
-                for model_idx, model_box in current_model.iterrows():
-                    if model_idx in model_matched:
-                        continue
-                        
-                    iou = calculate_iou(truth_box, model_box)
-                    if iou > best_iou:
-                        best_iou = iou
-                        best_model_idx = model_idx
-                
-                if best_model_idx is not None: # match found
-                    truth_matched.add(truth_idx)
-                    model_matched.add(best_model_idx)
+                 best_iou = 0.5  # Minimum IoU threshold for matching
+                 best_model_idx = None
 
-                    yolo_matches.append(current_model.loc[best_model_idx].to_dict())
-                    truth_matches.append(truth_box.to_dict())
-            
+                 for model_idx, model_box in current_model.iterrows():
+                     if model_idx in model_matched:
+                         continue
+
+                     iou = calculate_iou(truth_box, model_box)
+                     if iou > best_iou:
+                         best_iou = iou
+                         best_model_idx = model_idx
+
+                 if best_model_idx is not None: # match found
+                     truth_matched.add(truth_idx)
+                     model_matched.add(best_model_idx)
+
+                     yolo_matches.append(current_model.loc[best_model_idx].to_dict())
+                     truth_matches.append(truth_box.to_dict())
+
+
             # Second pass: Distance-based matching for remaining boxes
             remaining_truth = current_truth.loc[~current_truth.index.isin(truth_matched)]
             remaining_model = current_model.loc[~current_model.index.isin(model_matched)]
-            
+
             if not remaining_truth.empty and not remaining_model.empty:
-                for truth_idx, truth_box in remaining_truth.iterrows():
-                    best_distance = float('inf')
-                    best_model_idx = None
-                    
-                    for model_idx, model_box in remaining_model.iterrows():
-                        if model_idx in model_matched:
-                            continue
-                            
-                        distance = calculate_center_distance(truth_box, model_box)
-                        if distance < best_distance:
-                            best_distance = distance
-                            best_model_idx = model_idx
-                    
-                    if best_model_idx is not None:
-                        # We found a match based on distance
-                        truth_matched.add(truth_idx)
-                        model_matched.add(best_model_idx)
-                        
-                        # Add to match lists
-                        yolo_matches.append(current_model.loc[best_model_idx].to_dict())
-                        truth_matches.append(truth_box.to_dict())
-            
-            # Add remaining unmatched boxes
-            unmatched_truth = current_truth.loc[~current_truth.index.isin(truth_matched)]
-            missing_matches.extend(unmatched_truth.to_dict('records'))
-            
-            unmatched_model = current_model.loc[~current_model.index.isin(model_matched)]
-            misclassified.extend(unmatched_model.to_dict('records'))
-    
+                 for truth_idx, truth_box in remaining_truth.iterrows():
+                     best_distance = float('inf')
+                     best_model_idx = None
+
+                     for model_idx, model_box in remaining_model.iterrows():
+                         if model_idx in model_matched: # Check if model box already matched in this second pass
+                             continue
+
+                         distance = calculate_center_distance(truth_box, model_box)
+                         if distance < best_distance:
+                             best_distance = distance
+                             best_model_idx = model_idx
+
+                     if best_model_idx is not None:
+                         # We found a match based on distance
+                         truth_matched.add(truth_idx)
+                         model_matched.add(best_model_idx) # Mark this model box as matched
+
+                         # Add to match lists
+                         yolo_matches.append(current_model.loc[best_model_idx].to_dict())
+                         truth_matches.append(truth_box.to_dict())
+
+
+            # Add remaining unmatched boxes (after both passes)
+            final_unmatched_truth = current_truth.loc[~current_truth.index.isin(truth_matched)]
+            missing_matches.extend(final_unmatched_truth.to_dict('records'))
+
+            final_unmatched_model = current_model.loc[~current_model.index.isin(model_matched)]
+            misclassified.extend(final_unmatched_model.to_dict('records'))
+
     # Convert lists to DataFrames
     yolo_match_df = pd.DataFrame(yolo_matches)
     truth_match_df = pd.DataFrame(truth_matches)
     missing_match_df = pd.DataFrame(missing_matches)
     misclassified_df = pd.DataFrame(misclassified)
-    
-    # Ensure all DataFrames have the correct column order
+
+    # Ensure all DataFrames have the correct column order and handle empty cases
     for df in [yolo_match_df, truth_match_df, missing_match_df, misclassified_df]:
-        if not df.empty:
-            df = df[yolo_cols]
-    
+        if df.empty:
+            # Ensure empty DFs still have the correct columns if needed downstream
+            for col in yolo_cols:
+                 if col not in df.columns:
+                     df[col] = None # Or pd.NA
+            df = df[yolo_cols] # Enforce column order even if empty
+        else:
+            df = df[yolo_cols] # Enforce column order for non-empty DFs
+
     return yolo_match_df, truth_match_df, misclassified_df, missing_match_df
 
 def main(in_dir: str, out_dir: str, models: list[str]):
