@@ -21,3 +21,6 @@ zsh ./data_processing_scripts/copy_proc_lisa.sh
 
 # Count the number of lights in the data
 python ./data_analysis_scripts/light_counter.py
+
+# Format the Spark output
+python ./data_processing_scripts/format_spark_verification.py
