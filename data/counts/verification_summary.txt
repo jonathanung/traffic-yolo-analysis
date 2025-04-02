@@ -1,0 +1,26 @@
+Total Ground Truth Labels (from lisa_processed_label.csv): 57648
+========================================
+--- yolov3 Verification ---
+  Matched Count:       18384
+  Missing Count:       39264
+  Sum (Matched+Missing): 57648
+  Verification Status: PASSED
+  ----------------------------
+  Misclassified Count: 2486 (Informational)
+========================================
+--- yolov5 Verification ---
+  Matched Count:       14032
+  Missing Count:       43616
+  Sum (Matched+Missing): 57648
+  Verification Status: PASSED
+  ----------------------------
+  Misclassified Count: 1156 (Informational)
+========================================
+--- yolov8 Verification ---
+  Matched Count:       29118
+  Missing Count:       28530
+  Sum (Matched+Missing): 57648
+  Verification Status: PASSED
+  ----------------------------
+  Misclassified Count: 571 (Informational)
+========================================

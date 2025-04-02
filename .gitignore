@@ -2,6 +2,8 @@ data/*
 
 !data/matched_csv/
 !data/matched_csv/*
+!data/counts/
+!data/counts/*
 
 .DS_Store
 

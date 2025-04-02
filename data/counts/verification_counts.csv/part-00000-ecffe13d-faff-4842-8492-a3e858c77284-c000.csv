@@ -1,0 +1,4 @@
+model_version,matched,missed,total,matches_truth,misclassified
+yolov3,18384,39264,57648,true,2486
+yolov5,14032,43616,57648,true,1156
+yolov8,29118,28530,57648,true,571
