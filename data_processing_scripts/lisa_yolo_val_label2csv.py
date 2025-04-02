@@ -3,7 +3,7 @@ import csv
 import re
 
 
-def convert_results_to_csv(yolo_path: str, yolo_models: list, dataset_names: list):
+def convert_results_to_csv(yolo_path: str, yolo_models: list, dataset_names: list, output_dir: str):
     """
     Converts YOLO model results into CSV format for each model given path to YOLO results,
     list of YOLO models, and list of dataset names.
@@ -12,7 +12,7 @@ def convert_results_to_csv(yolo_path: str, yolo_models: list, dataset_names: lis
 
     # per model create one csv
     for model in yolo_models:
-        output_file_path = f"data/postprocessing/{model}_output.csv"
+        output_file_path = f"{output_dir}/{model}_output.csv"
 
         with open(output_file_path, 'w', newline='') as output_file:
             writer = csv.writer(output_file)
@@ -42,7 +42,8 @@ def main():
     DATASETS_NAMES = ['daySequence1', 'daySequence2', 'nightSequence1', 'nightSequence2']
 
     # call the txt_csv function to process files
-    convert_results_to_csv(yolo_path=YOLO_PATH, yolo_models=YOLO_MODELS, dataset_names=DATASETS_NAMES)
+    convert_results_to_csv(yolo_path=YOLO_PATH, yolo_models=YOLO_MODELS, dataset_names=DATASETS_NAMES,
+                           output_dir="data/label2csv")
 
 
 if __name__ == "__main__":
