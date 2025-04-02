@@ -17,7 +17,7 @@ python ./data_processing_scripts/sort_label_csv.py
 python ./data_processing_scripts/matching.py
 
 # Copy the matched CSV files to the data/matched_csv directory
-zsh ./data_processing_scripts/copy_proc_lisa.sh
+bash ./data_processing_scripts/copy_proc_lisa.sh
 
 # Count the number of lights in the data
 python ./data_analysis_scripts/light_counter.py
