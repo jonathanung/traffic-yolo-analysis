@@ -71,6 +71,7 @@ def load_data(matched_csv_dir: Path) -> pd.DataFrame:
     return (pd.concat(yolo_dfs, ignore_index=True), pd.concat(gt_dfs, ignore_index=True))
 
 def main():
+    sns.set_style("darkgrid")
     matched_csv_dir = Path("data/matched_csv")
     yolo_df, ground_truth_df = load_data(matched_csv_dir)
     
@@ -95,10 +96,9 @@ def main():
         axes[0][i].grid(True)
         
         # Add trend line
-        # lowess_fit = lowess(model_data['confidence'], model_data['iou'], frac=0.5)
         linear_best_fit = scipy.stats.linregress(model_data['iou'], model_data['confidence'])
-        # axes[i].plot(lowess_fit[:, 0], lowess_fit[:, 1], "r--", alpha=0.8)
         axes[0][i].plot(model_data['iou'], linear_best_fit.intercept + linear_best_fit.slope * model_data['iou'], "b-", alpha=0.8)
+        axes[0][i].legend(['Data', 'Linear'])
 
     for i, model in enumerate(['YOLOv3', 'YOLOv5', 'YOLOv8']):
         model_data = yolo_df[yolo_df['model_version'] == model]
@@ -112,10 +112,11 @@ def main():
         axes[1][i].grid(True)
         
         # Add trend line
-        # lowess_fit = lowess(model_data['confidence'], model_data['iou'], frac=0.5)
+        lowess_fit = lowess(model_data['confidence'], model_data['iou'], frac=0.2)
         linear_best_fit = scipy.stats.linregress(model_data['iou'], model_data['confidence'])
-        # axes[i].plot(lowess_fit[:, 0], lowess_fit[:, 1], "r--", alpha=0.8)
+        axes[1][i].plot(lowess_fit[:, 0], lowess_fit[:, 1], "r--", alpha=0.8)
         axes[1][i].plot(model_data['iou'], linear_best_fit.intercept + linear_best_fit.slope * model_data['iou'], "b-", alpha=0.8)
+        axes[1][i].legend(['Data', 'Lowess', 'Linear'])
 
     plt.tight_layout()
     os.makedirs('./results', exist_ok=True)

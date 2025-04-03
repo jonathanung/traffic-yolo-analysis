@@ -119,7 +119,7 @@ def return_matching_csvs(model_csv: str, ground_truth_csv: str) -> tuple[pd.Data
 
             # First pass: IoU matching
             for truth_idx, truth_box in current_truth.iterrows():
-                 best_iou = 0.25  # Minimum IoU threshold for matching
+                 best_iou = 0.45  # Minimum IoU threshold for matching
                  best_model_idx = None
 
                  for model_idx, model_box in current_model.iterrows():
