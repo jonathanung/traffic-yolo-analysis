@@ -116,11 +116,12 @@ def calculate_euclidean_distances(results: pd.DataFrame, ground_truth: pd.DataFr
                                              (ground_truth["y_center"] - results["y_center"]) ** 2
                                              )
 
-    return euclidian_data[["Model", "dataset", "img_id", "confidence", "euc_distance"]]
+    return euclidian_data[["Model", "dataset", "img_id", "euc_distance", "confidence"]]
 
 
 
 #TODO: make function to plot out df data
+def plot_data(data:pd.DataFrame):
 
 
 
