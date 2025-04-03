@@ -4,6 +4,11 @@ data/*
 !data/matched_csv/*
 !data/counts/
 !data/counts/*
+!data/sortedcsv/
+!data/sortedcsv/*
+data/sortedcsv/yolov3_output.csv
+data/sortedcsv/yolov5_output.csv
+data/sortedcsv/yolov8_output.csv
 
 .DS_Store
 
