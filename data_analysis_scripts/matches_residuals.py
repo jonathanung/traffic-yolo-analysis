@@ -38,10 +38,15 @@ def load_data(matched_csv_dir: Path, models:list, file_content:str)->pd.DataFram
 
     return pd.concat(all_dfs, ignore_index=True)
 
+def calculate_residuals(results: pd.DataFrame, ground_truth: pd.DataFrame)->pd.DataFrame:
+    residual= results[["Model", "dataset", "img_id"]].copy()
+    residual["Residual_x_center"] = results["x_center"] - ground_truth["x_center"]
+    residual["Residual_y_center"] = results["y_center"] - ground_truth["y_center"]
+    residual["Residual_width"] = results["width"] - ground_truth["width"]
+    residual["Residual_height"] = results["height"] - ground_truth["height"]
 
+    return residual
 
-
-#TODO: function that creates new column 'residual'
 
 #TODO: make function to plot out df data
 
@@ -50,11 +55,13 @@ def main():
     matched_csv_dir = Path("./data/matched_csv")
     models = ["3", "5", "8"]
 
-    model_results = load_data(matched_csv_dir, models, "_matched.csv" )
-    ground_truth_data = load_data(matched_csv_dir, models, "_truth_matched.csv" )
+    results_data = load_data(matched_csv_dir, models, "_matched.csv")
+    truth_data = load_data(matched_csv_dir, models, "_truth_matched.csv")
 
-    print(model_results)
-    print(ground_truth_data)
+    residuals_data = calculate_residuals(results=results_data, ground_truth=truth_data)
+
+    print(residuals_data)
+
 
 
 if __name__ == "__main__":
