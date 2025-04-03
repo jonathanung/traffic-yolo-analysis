@@ -43,38 +43,89 @@ def load_data(matched_csv_dir: Path, models:list, file_content:str)->pd.DataFram
 
     return pd.concat(all_dfs, ignore_index=True)
 
-def calculate_residuals(results: pd.DataFrame, ground_truth: pd.DataFrame)->pd.DataFrame:
-    residuals = pd.DataFrame()
+def calculate_IoU(results: pd.DataFrame, ground_truth: pd.DataFrame)->pd.DataFrame:
+    IoU = pd.DataFrame()
 
     # Fail conditions when either df is empty or when their lengths are disproportional
     if results.empty or ground_truth.empty:
         print(f"ERROR: either results data or ground truth data is missing. "
               f"Results missing:{results.empty}. Truth data:{ground_truth.empty} ")
-        return residuals
+        return IoU
 
     if len(results) != len(ground_truth):
         print("ERROR: Number of results matched and ground truth matched do not line up. Please run check process_data.sh")
-        return residuals
+        return IoU
 
     # copy columns from df
-    residual= results[["Model", "dataset", "img_id"]].copy()
+    IoU= results[["Model", "dataset", "img_id", "confidence"]].copy()
 
-    # calculate the residuals per column that model predicts
-    residual["Residual_x_center"] = results["x_center"] - ground_truth["x_center"]
-    residual["Residual_y_center"] = results["y_center"] - ground_truth["y_center"]
-    residual["Residual_width"] = results["width"] - ground_truth["width"]
-    residual["Residual_height"] = results["height"] - ground_truth["height"]
 
-    return residual
+    # box area calculations
+    IoU["predicted_box_area"] = results["height"] * results["width"]
+    IoU["true_box_area"] = ground_truth["height"] * ground_truth["width"]
+
+    # predicted x_min. x_max, y_min, y_max
+    IoU["predicted_x_min"] = results['x_center'] - results['width']
+    IoU["predicted_x_max"] = results['x_center'] + results['width']
+    IoU["predicted_y_min"] = results['y_center'] - results['height']
+    IoU["predicted_y_max"] = results['y_center'] + results['height']
+
+    # true x_min. x_max, y_min, y_max
+    IoU["true_x_min"] = ground_truth['x_center'] - ground_truth['width']
+    IoU["true_x_max"] = ground_truth['x_center'] + ground_truth['width']
+    IoU["true_y_min"] = ground_truth['y_center'] - ground_truth['height']
+    IoU["true_y_max"] = ground_truth['y_center'] + ground_truth['height']
+
+    # calculate intersections on corners of bounding mox
+    IoU["inter_x_min"] = IoU[["predicted_x_min", "true_x_min"]].max(axis=1)
+    IoU["inter_x_max"] = IoU[["predicted_x_max", "true_x_max"]].max(axis=1)
+    IoU["inter_y_min"] = IoU[["predicted_y_min", "true_y_min"]].max(axis=1)
+    IoU["inter_y_max"] = IoU[["predicted_y_max", "true_y_max"]].max(axis=1)
+
+    # Compute intersections width and height
+    IoU["inter_width"] = (IoU["inter_x_max"] - IoU["inter_x_min"]).clip(lower=0)
+    IoU["inter_height"] = (IoU["inter_y_max"] - IoU["inter_y_min"]).clip(lower=0)
+
+    # compute the overlapping area
+    IoU["intersecting area"] = IoU["inter_width"] * IoU["inter_height"]
+
+    return IoU[["Model", "dataset", "img_id", "intersecting area", "confidence"]]
+
+
+
+
+def calculate_euclidean_distances(results: pd.DataFrame, ground_truth: pd.DataFrame)-> pd.DataFrame:
+    '''
+    returns euclidean distance
+    '''
+    euclidian_data = pd.DataFrame()
+
+    # Fail conditions when either df is empty or when their lengths are disproportional
+    if results.empty or ground_truth.empty:
+        print(f"ERROR: either results data or ground truth data is missing. "
+              f"Results missing:{results.empty}. Truth data:{ground_truth.empty} ")
+        return euclidian_data
+
+    if len(results) != len(ground_truth):
+        print("ERROR: Number of results matched and ground truth matched do not line up. Please run check process_data.sh")
+        return euclidian_data
+
+    # copy columns from df
+    euclidian_data= results[["Model", "dataset", "img_id", "confidence"]].copy()
+    euclidian_data["euc_distance"] = np.sqrt((ground_truth["x_center"] - results["x_center"]) ** 2 +
+                                             (ground_truth["y_center"] - results["y_center"]) ** 2
+                                             )
+
+    return euclidian_data[["Model", "dataset", "img_id", "confidence", "euc_distance"]]
+
 
 
 #TODO: make function to plot out df data
 
-def plot_residuals(data: pd.DataFrame):
-    # validate that data frame contains data
-    if data.empty:
-        print("Skipping plot due to missing residuals data.")
-        return
+
+
+
+
 
 def main():
     matched_csv_dir = Path("./data/matched_csv")
@@ -83,9 +134,11 @@ def main():
     results_data = load_data(matched_csv_dir, models, "_matched.csv")
     truth_data = load_data(matched_csv_dir, models, "_truth_matched.csv")
 
-    residuals_data = calculate_residuals(results=results_data, ground_truth=truth_data)
+    IoU_data = calculate_IoU(results=results_data, ground_truth=truth_data)
+    euclidian_data = calculate_euclidean_distances(results=results_data, ground_truth=truth_data)
 
-    print(residuals_data)
+    print(IoU_data)
+    print(euclidian_data)
 
 
 
