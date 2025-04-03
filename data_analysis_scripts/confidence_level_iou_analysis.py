@@ -98,6 +98,15 @@ def main():
         # Add trend line
         linear_best_fit = scipy.stats.linregress(model_data['iou'], model_data['confidence'])
         axes[0][i].plot(model_data['iou'], linear_best_fit.intercept + linear_best_fit.slope * model_data['iou'], "b-", alpha=0.8)
+        
+        # Calculate correlation coefficient
+        corr = model_data['iou'].corr(model_data['confidence'])
+        
+        # Add correlation text to plot
+        axes[0][i].text(0.05, 0.95, f'r = {corr:.3f}', 
+                       transform=axes[0][i].transAxes,
+                       verticalalignment='top')
+        
         axes[0][i].legend(['Data', 'Linear'])
 
     for i, model in enumerate(['YOLOv3', 'YOLOv5', 'YOLOv8']):
@@ -116,6 +125,15 @@ def main():
         linear_best_fit = scipy.stats.linregress(model_data['iou'], model_data['confidence'])
         axes[1][i].plot(lowess_fit[:, 0], lowess_fit[:, 1], "r--", alpha=0.8)
         axes[1][i].plot(model_data['iou'], linear_best_fit.intercept + linear_best_fit.slope * model_data['iou'], "b-", alpha=0.8)
+
+        # Calculate correlation coefficient
+        corr = model_data['iou'].corr(model_data['confidence'])
+        
+        # Add correlation text to plot
+        axes[1][i].text(0.05, 0.95, f'r = {corr:.3f}', 
+                       transform=axes[1][i].transAxes,
+                       verticalalignment='top')
+        
         axes[1][i].legend(['Data', 'Lowess', 'Linear'])
 
     plt.tight_layout()
