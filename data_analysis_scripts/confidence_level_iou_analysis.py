@@ -89,7 +89,7 @@ def main():
         model_data = yolo_df[yolo_df['model_version'] == model]
         
         # Create scatter plot
-        axes[0][i].scatter(model_data['iou'], model_data['confidence'], alpha=0.5)
+        axes[0][i].scatter(model_data['iou'], model_data['confidence'], alpha=0.05, s=5)
         axes[0][i].set_title(model)
         axes[0][i].set_xlabel('IoU')
         axes[0][i].set_ylabel('Confidence')
@@ -105,8 +105,8 @@ def main():
         model_data = model_data[model_data['iou'] > 0]
         
         # Create scatter plot
-        axes[1][i].scatter(model_data['iou'], model_data['confidence'], alpha=0.5)
-        axes[1][i].set_title(model)
+        axes[1][i].scatter(model_data['iou'], model_data['confidence'], alpha=0.05, s=5)
+        axes[1][i].set_title(model + ' (IoU > 0)')
         axes[1][i].set_xlabel('IoU')
         axes[1][i].set_ylabel('Confidence')
         axes[1][i].grid(True)
