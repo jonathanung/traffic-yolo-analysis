@@ -94,10 +94,21 @@ def calculate_iou_DF (results_df:pd.DataFrame, gt_df:pd.DataFrame):
 
     return IoU_data
 
-#TODO: make function to plot out df data
-def plot_data(data:pd.DataFrame):
+def plot_data_IoU(to_plot:pd.DataFrame):
+    fig, axes = plt.subplots(2, len(to_plot["Model"].unique()), figsize=(15, 10))
 
-    pass
+    exclude_zero = to_plot.copy()
+    exclude_zero = exclude_zero[exclude_zero["IoU"] != 0]
+    for i, data in enumerate([exclude_zero, to_plot]):
+
+        for j, (model_version, model_data) in enumerate(data.groupby("Model")):
+            ax = axes[i,j]
+            ax.hist(model_data["IoU"], bins=100, alpha=0.6)
+            ax.set_title(model_version)
+            ax.set_xlabel("IoU Residuals (n=0.01)")
+            ax.set_ylabel("Frequency")
+    plt.tight_layout()
+    plt.show()
 
 
 
@@ -115,9 +126,7 @@ def main():
     euclidian_data = results_data[["Model","dataset", "img_id","confidence"]].copy()
     euclidian_data["euc_dist"] = calculate_center_distance(results_data, truth_data)
 
-    print(IoU_data)
-    print(euclidian_data)
-
+    plot_data_IoU(IoU_data)
 
 
 if __name__ == "__main__":
