@@ -20,7 +20,7 @@ python3 ./data_processing_scripts/matching.py
 bash ./data_processing_scripts/copy_proc_lisa.sh
 
 # Count the number of lights in the data
-python3 ./data_processing_scripts/light_counter.py
+spark-submit ./data_processing_scripts/light_counter.py
 
 # Format the Spark output
 python3 ./data_processing_scripts/format_spark_verification.py
