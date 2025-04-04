@@ -1,4 +1,4 @@
-#F1 score but only using if IoU is over 0
+#F1 score but only using if IoU is over 45%
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,7 +14,7 @@ MODEL_COLORS = {
     'YOLOv8': '#70AD47'
 }
 
-def calculate_iou(box1: Dict, box2: Dict) -> float:
+def calculate_iou(box1, box2):
     """
     Calculate IoU between two boxes in YOLO format (x_center, y_center, width, height)
     """
@@ -46,83 +46,31 @@ def calculate_iou(box1: Dict, box2: Dict) -> float:
     iou = intersection / union if union > 0 else 0
     return iou
 
-def load_data(matched_csv_dir: Path, iou_threshold: float = 0.00) -> pd.DataFrame:
-    """Loads matched, missing, and misclassified data with IoU thresholding."""
+def load_data(matched_csv_dir: Path) -> pd.DataFrame:
+    """Loads matched, missing, and misclassified data for all models."""
     all_dfs = []
     models = ["3", "5", "8"]
     statuses = {'matched': 'Matched', 'missing': 'Missing', 'misclassified': 'Misclassified'}
+    THRESH = 0.00
 
-    # First load all ground truth data for IoU calculation
-    gt_dfs = []
-    for model_num in models:
-        gt_file = matched_csv_dir / f"yolov{model_num}_truth_matched.csv"
-        try:
-            gt_df = pd.read_csv(gt_file)
-            gt_df['model_version'] = f"YOLOv{model_num}"
-            gt_dfs.append(gt_df)
-        except FileNotFoundError:
-            print(f"Warning: Ground truth file not found - {gt_file}. Skipping.")
-        except pd.errors.EmptyDataError:
-            print(f"Warning: Ground truth file is empty - {gt_file}. Skipping.")
-    
-    if not gt_dfs:
-        print("Error: No ground truth data loaded. Cannot calculate IoU.")
-        return pd.DataFrame()
-    
-    gt_df = pd.concat(gt_dfs, ignore_index=True)
-
-    # Now process the detection files with IoU thresholding
     for model_num in models:
         model_version = f"YOLOv{model_num}"
-        model_gt_df = gt_df[gt_df['model_version'] == model_version]
-        
         for status_key, status_name in statuses.items():
             file_path = matched_csv_dir / f"yolov{model_num}_{status_key}.csv"
             try:
                 df = pd.read_csv(file_path)
                 df['model_version'] = model_version
-                
-                # For matched detections, calculate IoU and apply threshold
-                if status_key == 'matched':
-                    # Merge with ground truth to calculate IoU
-                    merged = pd.merge(df, model_gt_df, 
-                                     on=['dataset', 'img_id', 'class_id'],
-                                     suffixes=('', '_gt'))
-                    
-                    # Calculate IoU for each matched detection
-                    ious = []
-                    for _, row in merged.iterrows():
-                        det_box = {
-                            'x_center': row['x_center'],
-                            'y_center': row['y_center'],
-                            'width': row['width'],
-                            'height': row['height']
-                        }
-                        gt_box = {
-                            'x_center': row['x_center_gt'],
-                            'y_center': row['y_center_gt'],
-                            'width': row['width_gt'],
-                            'height': row['height_gt']
-                        }
-                        ious.append(calculate_iou(det_box, gt_box))
-                    
-                    merged['iou'] = ious
-                    
-                    # Apply IoU threshold - reclassify low-IoU matches as misclassified
-                    merged['status'] = np.where(
-                        merged['iou'] >= iou_threshold,
-                        'Matched',
-                        'Misclassified'
-                    )
-                    
-                    # Keep only the original columns plus status
-                    merged = merged[df.columns.tolist() + ['status']]
-                    all_dfs.append(merged)
+                if status_key ==  'matched':
+                    truth_path = matched_csv_dir / f"yolov{model_num}_truth_matched.csv"
+                    truth_df = pd.read_csv(truth_path)
+                    df['IoU'] = pd.DataFrame([calculate_iou(yolo_row, gt_row) 
+                                for yolo_row, gt_row in zip(df.to_dict('records'), 
+                                                        truth_df.to_dict('records'))])
+                    df['status'] = df['IoU'].apply(lambda x: 'Matched' if x >= THRESH else 'Misclassified')
                 else:
-                    # For missing and misclassified, keep as is
+                    df['IoU'] = -1
                     df['status'] = status_name
-                    all_dfs.append(df)
-                
+                all_dfs.append(df[['model_version', 'dataset', 'status']])
             except FileNotFoundError:
                 print(f"Warning: File not found - {file_path}. Skipping.")
             except pd.errors.EmptyDataError:
@@ -132,8 +80,7 @@ def load_data(matched_csv_dir: Path, iou_threshold: float = 0.00) -> pd.DataFram
         print("Error: No data loaded. Cannot calculate F1 scores.")
         return pd.DataFrame()
 
-    combined_df = pd.concat(all_dfs, ignore_index=True)
-    return combined_df[['model_version', 'dataset', 'status']]
+    return pd.concat(all_dfs, ignore_index=True)
 
 def get_ground_truth_counts(sorted_csv_dir: Path) -> tuple[dict, int]:
     """Gets the ground truth counts by sequence and total."""
@@ -407,13 +354,12 @@ def main():
     matched_csv_dir = Path("./data/matched_csv")
     sorted_csv_dir = Path("./data/sortedcsv")
     output_dir = Path("./results/f1_scores_nonzero")
-    iou_threshold = 0.45 #
     
     # Create output directory if it doesn't exist
     output_dir.mkdir(parents=True, exist_ok=True)
     
     # Load data
-    combined_data = load_data(matched_csv_dir, iou_threshold)
+    combined_data = load_data(matched_csv_dir)
     sequence_gt_counts, total_gt_count = get_ground_truth_counts(sorted_csv_dir)
     
     # Calculate F1 scores
@@ -421,7 +367,7 @@ def main():
     
     # Display metrics in console
     if not model_metrics.empty:
-        print("\nF1 Scores by Model (IoU Greater than or equal to 0.00):")
+        print("\nF1 Scores by Model:")
         print(model_metrics[['model_version', 'precision', 'recall', 'f1_score']].to_string(index=False))
     
     if not sequence_metrics.empty:
