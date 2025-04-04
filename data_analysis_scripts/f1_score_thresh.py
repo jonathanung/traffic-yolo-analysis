@@ -1,9 +1,11 @@
+#F1 score but only using if IoU is over 45%
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import os
 from pathlib import Path
 import matplotlib.ticker as mtick
+from typing import Tuple, Dict
 
 # Define colors for consistency
 MODEL_COLORS = {
@@ -12,11 +14,44 @@ MODEL_COLORS = {
     'YOLOv8': '#70AD47'
 }
 
-def load_data(matched_csv_dir: Path, iou_threshold: float = 0.45) -> pd.DataFrame:
+def calculate_iou(box1, box2):
+    """
+    Calculate IoU between two boxes in YOLO format (x_center, y_center, width, height)
+    """
+    # Convert from center format to corner format
+    box1_x1 = box1['x_center'] - box1['width']/2
+    box1_y1 = box1['y_center'] - box1['height']/2
+    box1_x2 = box1['x_center'] + box1['width']/2
+    box1_y2 = box1['y_center'] + box1['height']/2
+    
+    box2_x1 = box2['x_center'] - box2['width']/2
+    box2_y1 = box2['y_center'] - box2['height']/2
+    box2_x2 = box2['x_center'] + box2['width']/2
+    box2_y2 = box2['y_center'] + box2['height']/2
+    
+    # Calculate intersection
+    x1 = max(box1_x1, box2_x1)
+    y1 = max(box1_y1, box2_y1)
+    x2 = min(box1_x2, box2_x2)
+    y2 = min(box1_y2, box2_y2)
+    
+    intersection = max(0, x2 - x1) * max(0, y2 - y1)
+    
+    # Calculate union
+    box1_area = box1['width'] * box1['height']
+    box2_area = box2['width'] * box2['height']
+    union = box1_area + box2_area - intersection
+    
+    # Calculate IoU
+    iou = intersection / union if union > 0 else 0
+    return iou
+
+def load_data(matched_csv_dir: Path) -> pd.DataFrame:
     """Loads matched, missing, and misclassified data for all models."""
     all_dfs = []
     models = ["3", "5", "8"]
     statuses = {'matched': 'Matched', 'missing': 'Missing', 'misclassified': 'Misclassified'}
+    THRESH = 0.45
 
     for model_num in models:
         model_version = f"YOLOv{model_num}"
@@ -25,7 +60,16 @@ def load_data(matched_csv_dir: Path, iou_threshold: float = 0.45) -> pd.DataFram
             try:
                 df = pd.read_csv(file_path)
                 df['model_version'] = model_version
-                df['status'] = status_name
+                if status_key ==  'matched':
+                    truth_path = matched_csv_dir / f"yolov{model_num}_truth_matched.csv"
+                    truth_df = pd.read_csv(truth_path)
+                    df['IoU'] = pd.DataFrame([calculate_iou(yolo_row, gt_row) 
+                                for yolo_row, gt_row in zip(df.to_dict('records'), 
+                                                        truth_df.to_dict('records'))])
+                    df['status'] = df['IoU'].apply(lambda x: 'Matched' if x >= THRESH else 'Misclassified')
+                else:
+                    df['IoU'] = -1
+                    df['status'] = status_name
                 all_dfs.append(df[['model_version', 'dataset', 'status']])
             except FileNotFoundError:
                 print(f"Warning: File not found - {file_path}. Skipping.")
@@ -54,21 +98,19 @@ def get_ground_truth_counts(sorted_csv_dir: Path) -> tuple[dict, int]:
     except pd.errors.EmptyDataError:
         print(f"Error: Ground truth file is empty at {gt_file}.")
         return {}, 0
-
-def calculate_f1_scores(data_df: pd.DataFrame, sequence_gt_counts: dict) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    """Calculate precision, recall, and F1 scores by model and sequence."""
+    
+def calculate_f1_scores(data_df: pd.DataFrame, sequence_gt_counts: Dict) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Calculate precision, recall, and F1 scores by model and sequence with IoU threshold."""
     if data_df.empty or not sequence_gt_counts:
         print("Cannot calculate F1 scores due to missing data.")
         return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
     
-    # Group by model and sequence to calculate metrics
     model_sequence_metrics = []
     model_metrics = []
     
     models = sorted(data_df['model_version'].unique())
     sequences = sorted(data_df['dataset'].unique())
     
-    # Calculate metrics for each model and sequence
     for model in models:
         model_data = data_df[data_df['model_version'] == model]
         
@@ -81,12 +123,8 @@ def calculate_f1_scores(data_df: pd.DataFrame, sequence_gt_counts: dict) -> tupl
                 
             matched = seq_data[seq_data['status'] == 'Matched'].shape[0]
             misclassified = seq_data[seq_data['status'] == 'Misclassified'].shape[0]
-            missing = seq_data[seq_data['status'] == 'Missing'].shape[0]
+            missing = gt_count - matched - misclassified  # Calculate missing based on GT count
             
-            # Metrics calculation
-            # True Positives = Matched
-            # False Positives = Misclassified
-            # False Negatives = Missing
             tp = matched
             fp = misclassified
             fn = missing
@@ -109,7 +147,7 @@ def calculate_f1_scores(data_df: pd.DataFrame, sequence_gt_counts: dict) -> tupl
         # By model (overall)
         matched_total = model_data[model_data['status'] == 'Matched'].shape[0]
         misclassified_total = model_data[model_data['status'] == 'Misclassified'].shape[0]
-        missing_total = model_data[model_data['status'] == 'Missing'].shape[0]
+        missing_total = sum(sequence_gt_counts.values()) - matched_total - misclassified_total
         
         tp_total = matched_total
         fp_total = misclassified_total
@@ -134,11 +172,9 @@ def calculate_f1_scores(data_df: pd.DataFrame, sequence_gt_counts: dict) -> tupl
     for model in models:
         model_data = data_df[data_df['model_version'] == model]
         
-        # Calculate for day and night
         for time_of_day in ['day', 'night']:
             day_night_data = model_data[model_data['dataset'].str.contains(time_of_day)]
             
-            # Calculate total ground truth for day/night
             if time_of_day == 'day':
                 gt_count = sequence_gt_counts.get('daySequence1', 0) + sequence_gt_counts.get('daySequence2', 0)
             else:
@@ -149,7 +185,7 @@ def calculate_f1_scores(data_df: pd.DataFrame, sequence_gt_counts: dict) -> tupl
                 
             matched = day_night_data[day_night_data['status'] == 'Matched'].shape[0]
             misclassified = day_night_data[day_night_data['status'] == 'Misclassified'].shape[0]
-            missing = day_night_data[day_night_data['status'] == 'Missing'].shape[0]
+            missing = gt_count - matched - misclassified
             
             tp = matched
             fp = misclassified
@@ -317,7 +353,7 @@ def export_metrics_to_csv(sequence_metrics: pd.DataFrame, model_metrics: pd.Data
 def main():
     matched_csv_dir = Path("./data/matched_csv")
     sorted_csv_dir = Path("./data/sortedcsv")
-    output_dir = Path("./results/f1_scores")
+    output_dir = Path("./results/f1_scores_thres")
     
     # Create output directory if it doesn't exist
     output_dir.mkdir(parents=True, exist_ok=True)
