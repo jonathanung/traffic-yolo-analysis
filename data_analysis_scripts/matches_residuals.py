@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 from pathlib import Path
-import matplotlib.ticker as mtick
 import seaborn as sns
 from pandas.core.interchange.dataframe_protocol import DataFrame
 
@@ -105,15 +104,17 @@ def plot_data_IoU(to_plot: pd.DataFrame, output_dir: Path):
     fig, axes = plt.subplots(2, len(to_plot["Model"].unique()), figsize=(15, 10))
 
     exclude_zero = to_plot.copy()
-    exclude_zero = exclude_zero[exclude_zero["IoU"] != 0]
+    exclude_zero = exclude_zero[exclude_zero["IoU"] > 0.01]
     for i, data in enumerate([exclude_zero, to_plot]):
-
         for j, (model_version, model_data) in enumerate(data.groupby("Model")):
             ax = axes[i, j]
             ax.hist(model_data["IoU"], bins=100, alpha=0.6)
-            ax.set_title(model_version)
+            title = model_version + ' (IoU > 0.01)' if i == 0 else model_version
+            ax.set_title(title)
             ax.set_xlabel("IoU Residuals (n=0.01)")
             ax.set_ylabel("Frequency")
+            max_ylim = 1000 if i == 0 else 12000
+            ax.set_ylim(0, max_ylim)
     plt.tight_layout()
     plt.savefig(file_output)
 
@@ -121,17 +122,20 @@ def plot_data_IoU(to_plot: pd.DataFrame, output_dir: Path):
 def plot_euclidean(to_plot: pd.DataFrame, output_dir: Path):
     sns.set_style("darkgrid")
     file_output = output_dir.joinpath("euc_residuals.png")
-    fig, axes = plt.subplots(1, len(to_plot["Model"].unique()), figsize=(15, 10))
+    fig, axes = plt.subplots(2, len(to_plot["Model"].unique()), figsize=(15, 10))
     for i, (model_version, model_data) in enumerate(to_plot.groupby("Model")):
-        ax = axes[i]
+        ax = axes[0][i]
         ax.hist(model_data["euc_dist"], bins=100, alpha=0.6)
         ax.set_title(model_version)
         ax.set_xlabel("Euclidean distance(n=0.01)")
-        ax.set_ylabel("Frequency (log scale)")
+        ax.set_ylabel("Frequency")
+    for i, (model_version, model_data) in enumerate(to_plot.groupby("Model")):
+        ax = axes[1][i]
+        ax.hist(model_data["euc_dist"], bins=100, alpha=0.6)
+        ax.set_title(model_version + ' (log_10 scale)')
+        ax.set_xlabel("Euclidean distance(n=0.01)")
+        ax.set_ylabel("Frequency (log_10 scale)")
         ax.set_yscale("log")
-
-
-
     plt.tight_layout()
     plt.savefig(file_output)
 
@@ -153,6 +157,14 @@ def main():
 
     plot_data_IoU(IoU_data, output_dir)
     plot_euclidean(euclidian_data, output_dir)
+
+    for model, model_data in IoU_data.groupby("Model"):
+        sorted_data = model_data.sort_values("IoU", ascending=False)
+        sorted_data.to_csv(output_dir.joinpath(f"IoU_data_model{model}.csv"), index=False)
+
+    for model, model_data in euclidian_data.groupby("Model"):
+        sorted_data = model_data.sort_values("euc_dist", ascending=True)
+        sorted_data.to_csv(output_dir.joinpath(f"euclidean_data_model{model}.csv"), index=False)
 
 
 if __name__ == "__main__":
