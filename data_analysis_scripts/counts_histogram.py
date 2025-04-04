@@ -104,7 +104,7 @@ def plot_sequence_bars(data_df: pd.DataFrame, sequence_gt_counts: dict, output_d
 
     n_seq = len(sequences)
     n_cols = 2
-    n_rows = (n_seq + n_cols - 1) // n_cols
+    n_rows = (n_seq + n_cols - 1) // n_cols + 1
     fig, axes = plt.subplots(n_rows, n_cols, figsize=(10 * n_cols, 6 * n_rows), sharey=True)
     axes = axes.flatten()
 
@@ -149,7 +149,54 @@ def plot_sequence_bars(data_df: pd.DataFrame, sequence_gt_counts: dict, output_d
         if i == 0:
              ax.legend(title="Status", loc='upper right')
     
-    for j in range(i + 1, len(axes)):
+    # create plots for day and night
+
+    for i in range(2):
+        time_of_day = 'day' if i == 0 else 'night'
+        ax = axes[i + n_seq]
+        day_night_data = data_df[data_df['dataset'].str.contains(time_of_day)]
+        day_night_counts = day_night_data.groupby(['model_version', 'status']).size().unstack(fill_value=0)
+        day_night_counts = day_night_counts.reindex(index=models, columns=statuses, fill_value=0)
+        
+        if time_of_day == 'day':
+            total_gt_for_day_night = sequence_gt_counts.get('daySequence1', 0) + sequence_gt_counts.get('daySequence2', 0)
+        else:
+            total_gt_for_day_night = sequence_gt_counts.get('nightSequence1', 0) + sequence_gt_counts.get('nightSequence2', 0)
+        
+        if total_gt_for_day_night > 0:
+            day_night_percentages = (day_night_counts / total_gt_for_day_night) * 100
+        else:
+            day_night_percentages = pd.DataFrame(0, index=day_night_counts.index, columns=day_night_counts.columns)
+            
+        n_models = len(day_night_counts.index)
+        n_status = len(day_night_counts.columns)
+        bar_width = 0.25
+        index = np.arange(n_models)
+
+        for j, status in enumerate(day_night_counts.columns):
+            counts = day_night_counts[status]
+            percentages = day_night_percentages[status]
+            bars = ax.bar(index + j * bar_width, counts, bar_width, label=status, color=STATUS_COLORS.get(status, 'gray'))
+            
+            for bar, perc in zip(bars, percentages):
+                height = bar.get_height()
+                ax.text(bar.get_x() + bar.get_width() / 2., height + 1,
+                        f'{perc:.1f}%',
+                        ha='center', va='bottom', fontsize=8)
+                
+        ax.set_title(f'{"Day" if i == 0 else "Night"} (GT: {total_gt_for_day_night})')
+        ax.set_xticks(index + bar_width * (n_status - 1) / 2)
+        ax.set_xticklabels(day_night_counts.index, rotation=45, ha='right')
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        if i % n_cols == 0:
+            ax.set_ylabel('Count')
+        if i == 0:
+            ax.legend(title="Status", loc='upper right')
+    
+    # After all the sequence and day/night plots are done
+    total_plots_needed = n_seq + 2  # sequences + day + night
+    for j in range(total_plots_needed, len(axes)):
         axes[j].axis('off')
 
     plt.tight_layout(rect=[0, 0, 1, 1])
