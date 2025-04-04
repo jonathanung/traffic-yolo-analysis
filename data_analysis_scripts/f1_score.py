@@ -12,7 +12,7 @@ MODEL_COLORS = {
     'YOLOv8': '#70AD47'
 }
 
-def load_data(matched_csv_dir: Path) -> pd.DataFrame:
+def load_data(matched_csv_dir: Path, iou_threshold: float = 0.45) -> pd.DataFrame:
     """Loads matched, missing, and misclassified data for all models."""
     all_dfs = []
     models = ["3", "5", "8"]
