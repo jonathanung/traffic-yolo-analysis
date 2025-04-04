@@ -55,11 +55,11 @@ def get_ground_truth_counts(sorted_csv_dir: Path) -> tuple[dict, int]:
         print(f"Error: Ground truth file is empty at {gt_file}.")
         return {}, 0
 
-def calculate_f1_scores(data_df: pd.DataFrame, sequence_gt_counts: dict) -> tuple[pd.DataFrame, pd.DataFrame]:
+def calculate_f1_scores(data_df: pd.DataFrame, sequence_gt_counts: dict) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Calculate precision, recall, and F1 scores by model and sequence."""
     if data_df.empty or not sequence_gt_counts:
         print("Cannot calculate F1 scores due to missing data.")
-        return pd.DataFrame(), pd.DataFrame()
+        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
     
     # Group by model and sequence to calculate metrics
     model_sequence_metrics = []
@@ -129,7 +129,48 @@ def calculate_f1_scores(data_df: pd.DataFrame, sequence_gt_counts: dict) -> tupl
             'fn': fn_total
         })
     
-    return pd.DataFrame(model_sequence_metrics), pd.DataFrame(model_metrics)
+    # Calculate metrics for day/night
+    day_night_metrics = []
+    for model in models:
+        model_data = data_df[data_df['model_version'] == model]
+        
+        # Calculate for day and night
+        for time_of_day in ['day', 'night']:
+            day_night_data = model_data[model_data['dataset'].str.contains(time_of_day)]
+            
+            # Calculate total ground truth for day/night
+            if time_of_day == 'day':
+                gt_count = sequence_gt_counts.get('daySequence1', 0) + sequence_gt_counts.get('daySequence2', 0)
+            else:
+                gt_count = sequence_gt_counts.get('nightSequence1', 0) + sequence_gt_counts.get('nightSequence2', 0)
+            
+            if gt_count == 0:
+                continue
+                
+            matched = day_night_data[day_night_data['status'] == 'Matched'].shape[0]
+            misclassified = day_night_data[day_night_data['status'] == 'Misclassified'].shape[0]
+            missing = day_night_data[day_night_data['status'] == 'Missing'].shape[0]
+            
+            tp = matched
+            fp = misclassified
+            fn = missing
+            
+            precision = tp / (tp + fp) if (tp + fp) > 0 else 0
+            recall = tp / (tp + fn) if (tp + fn) > 0 else 0
+            f1 = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
+            
+            day_night_metrics.append({
+                'model_version': model,
+                'time_of_day': time_of_day.capitalize(),
+                'precision': precision,
+                'recall': recall,
+                'f1_score': f1,
+                'tp': tp,
+                'fp': fp,
+                'fn': fn
+            })
+    
+    return pd.DataFrame(model_sequence_metrics), pd.DataFrame(model_metrics), pd.DataFrame(day_night_metrics)
 
 def plot_f1_by_model(model_metrics: pd.DataFrame, output_dir: Path):
     """Plot overall F1 scores, precision, and recall by model."""
@@ -219,6 +260,50 @@ def plot_f1_by_sequence(sequence_metrics: pd.DataFrame, output_dir: Path):
     plt.close(fig)
     print(f"Saved F1 scores by sequence plot to {output_dir / 'f1_by_sequence.png'}")
 
+def plot_f1_by_day_night(day_night_metrics: pd.DataFrame, output_dir: Path):
+    """Plot F1 scores by day/night conditions for each model."""
+    if day_night_metrics.empty:
+        print("Cannot generate day/night comparison plot due to missing data.")
+        return
+    
+    fig, ax = plt.subplots(figsize=(12, 7))
+    
+    times = sorted(day_night_metrics['time_of_day'].unique())
+    models = sorted(day_night_metrics['model_version'].unique())
+    
+    bar_width = 0.25
+    index = np.arange(len(times))
+    
+    # Plot bars for each model
+    for i, model in enumerate(models):
+        model_data = day_night_metrics[day_night_metrics['model_version'] == model]
+        model_data = model_data.set_index('time_of_day').reindex(times).fillna(0)
+        
+        bars = ax.bar(index + (i - 1) * bar_width, model_data['f1_score'], 
+                     bar_width, label=model, color=MODEL_COLORS.get(model, f'C{i}'))
+        
+        # Add values on top of bars
+        for bar in bars:
+            height = bar.get_height()
+            if height > 0:
+                ax.text(bar.get_x() + bar.get_width()/2., height + 0.02,
+                       f'{height:.2f}', ha='center', va='bottom', fontsize=9)
+    
+    ax.set_ylabel('F1 Score')
+    ax.set_title('F1 Score by Day/Night Conditions')
+    ax.set_xticks(index)
+    ax.set_xticklabels(times)
+    ax.legend()
+    ax.set_ylim(0, 1.15)
+    
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    
+    plt.tight_layout()
+    plt.savefig(output_dir / 'f1_by_day_night.png', dpi=300)
+    plt.close(fig)
+    print(f"Saved F1 scores by day/night plot to {output_dir / 'f1_by_day_night.png'}")
+
 def export_metrics_to_csv(sequence_metrics: pd.DataFrame, model_metrics: pd.DataFrame, output_dir: Path):
     """Export the calculated metrics to CSV files."""
     if not sequence_metrics.empty:
@@ -242,7 +327,7 @@ def main():
     sequence_gt_counts, total_gt_count = get_ground_truth_counts(sorted_csv_dir)
     
     # Calculate F1 scores
-    sequence_metrics, model_metrics = calculate_f1_scores(combined_data, sequence_gt_counts)
+    sequence_metrics, model_metrics, day_night_metrics = calculate_f1_scores(combined_data, sequence_gt_counts)
     
     # Display metrics in console
     if not model_metrics.empty:
@@ -253,10 +338,20 @@ def main():
         print("\nF1 Scores by Sequence and Model:")
         print(sequence_metrics[['model_version', 'dataset', 'precision', 'recall', 'f1_score']].to_string(index=False))
     
+    if not day_night_metrics.empty:
+        print("\nF1 Scores by Day/Night Conditions:")
+        print(day_night_metrics[['model_version', 'time_of_day', 'precision', 'recall', 'f1_score']].to_string(index=False))
+    
     # Plot and export results
     plot_f1_by_model(model_metrics, output_dir)
     plot_f1_by_sequence(sequence_metrics, output_dir)
+    plot_f1_by_day_night(day_night_metrics, output_dir)
+    
+    # Export metrics to CSV (add day/night metrics)
     export_metrics_to_csv(sequence_metrics, model_metrics, output_dir)
+    if not day_night_metrics.empty:
+        day_night_metrics.to_csv(output_dir / 'f1_metrics_by_day_night.csv', index=False)
+        print(f"Saved day/night metrics to {output_dir / 'f1_metrics_by_day_night.csv'}")
 
 if __name__ == "__main__":
     main()
