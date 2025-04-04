@@ -66,7 +66,7 @@ def load_data(matched_csv_dir: Path) -> pd.DataFrame:
                     df['IoU'] = pd.DataFrame([calculate_iou(yolo_row, gt_row) 
                                 for yolo_row, gt_row in zip(df.to_dict('records'), 
                                                         truth_df.to_dict('records'))])
-                    df['status'] = df['IoU'].apply(lambda x: 'Matched' if x >= THRESH else 'Misclassified')
+                    df['status'] = df['IoU'].apply(lambda x: 'Matched' if x > THRESH else 'Misclassified')
                 else:
                     df['IoU'] = -1
                     df['status'] = status_name
