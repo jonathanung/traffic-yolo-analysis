@@ -12,11 +12,46 @@ STATUS_COLORS = {
     'Misclassified': 'red'
 }
 
+THRESH = 0.45
+
+def calculate_iou(box1, box2):
+    """
+    Calculate IoU between two boxes in YOLO format (x_center, y_center, width, height)
+    """
+    # Convert from center format to corner format
+    box1_x1 = box1['x_center'] - box1['width']/2
+    box1_y1 = box1['y_center'] - box1['height']/2
+    box1_x2 = box1['x_center'] + box1['width']/2
+    box1_y2 = box1['y_center'] + box1['height']/2
+    
+    box2_x1 = box2['x_center'] - box2['width']/2
+    box2_y1 = box2['y_center'] - box2['height']/2
+    box2_x2 = box2['x_center'] + box2['width']/2
+    box2_y2 = box2['y_center'] + box2['height']/2
+    
+    # Calculate intersection
+    x1 = max(box1_x1, box2_x1)
+    y1 = max(box1_y1, box2_y1)
+    x2 = min(box1_x2, box2_x2)
+    y2 = min(box1_y2, box2_y2)
+    
+    intersection = max(0, x2 - x1) * max(0, y2 - y1)
+    
+    # Calculate union
+    box1_area = box1['width'] * box1['height']
+    box2_area = box2['width'] * box2['height']
+    union = box1_area + box2_area - intersection
+    
+    # Calculate IoU
+    iou = intersection / union if union > 0 else 0
+    return iou
+
 def load_data(matched_csv_dir: Path) -> pd.DataFrame:
     """Loads matched, missing, and misclassified data for all models."""
-    all_dfs = []
+    yolo_dfs = []
+    gt_dfs = []
     models = ["3", "5", "8"]
-    statuses = {'matched': 'Matched', 'missing': 'Missing', 'misclassified': 'Misclassified'}
+    statuses = {'matched': 'Matched', 'truth_matched': 'Truth'}
 
     for model_num in models:
         model_version = f"YOLOv{model_num}"
@@ -25,18 +60,55 @@ def load_data(matched_csv_dir: Path) -> pd.DataFrame:
             try:
                 df = pd.read_csv(file_path)
                 df['model_version'] = model_version
-                df['status'] = status_name
-                all_dfs.append(df[['model_version', 'dataset', 'status']])
+                if status_key == 'truth_matched':
+                    gt_dfs.append(df)
+                else:
+                    yolo_dfs.append(df)
             except FileNotFoundError:
                 print(f"Warning: File not found - {file_path}. Skipping.")
             except pd.errors.EmptyDataError:
                  print(f"Warning: File is empty - {file_path}. Skipping.")
 
-    if not all_dfs:
+    if not yolo_dfs or not gt_dfs:
         print("Error: No data loaded. Cannot generate plots.")
-        return pd.DataFrame()
+        return pd.DataFrame(), pd.DataFrame()
+    
+    yolo_df = pd.concat(yolo_dfs, ignore_index=True)
+    gt_df = pd.concat(gt_dfs, ignore_index=True)
+    
+    yolo_df['IoU'] = pd.DataFrame([calculate_iou(yolo_row, gt_row) 
+                                for yolo_row, gt_row in zip(yolo_df.to_dict('records'), 
+                                                        gt_df.to_dict('records'))])
+    
+    yolo_df_thresh = yolo_df.copy()
+    yolo_df_non_zero = yolo_df.copy()
+    yolo_df['status'] = 'Matched'
+    yolo_df_thresh['status'] = yolo_df_thresh['IoU'].apply(lambda x: 'Matched' if x >= THRESH else 'Misclassified')
+    yolo_df_non_zero['status'] = yolo_df_non_zero['IoU'].apply(lambda x: 'Matched' if x > 0 else 'Misclassified')
 
-    return pd.concat(all_dfs, ignore_index=True)
+    yolo_dfs2 = []
+    statuses2 = {'missing': 'Missing', 'misclassified': 'Misclassified'}
+    for model_num in models:
+        model_version = f"YOLOv{model_num}"
+        for status_key, status_name in statuses2.items():
+            file_path = matched_csv_dir / f"yolov{model_num}_{status_key}.csv"
+            try:
+                df = pd.read_csv(file_path)
+                df['model_version'] = model_version
+                df['status'] = status_name
+                yolo_dfs2.append(df)
+            except FileNotFoundError:
+                print(f"Warning: File not found - {file_path}. Skipping.")
+            except pd.errors.EmptyDataError:
+                 print(f"Warning: File is empty - {file_path}. Skipping.")
+
+    yolo_df2 = pd.concat(yolo_dfs2, ignore_index=True)
+    yolo_df2['IoU'] = -1
+    yolo_df = pd.concat([yolo_df, yolo_df2], ignore_index=True)
+    yolo_df_thresh = pd.concat([yolo_df_thresh, yolo_df2], ignore_index=True)
+    yolo_df_non_zero = pd.concat([yolo_df_non_zero, yolo_df2], ignore_index=True)
+
+    return yolo_df, yolo_df_thresh, yolo_df_non_zero
 
 def get_ground_truth_counts(sorted_csv_dir: Path) -> tuple[dict, int]:
     gt_file = sorted_csv_dir / "lisa_processed_label.csv"
@@ -53,47 +125,63 @@ def get_ground_truth_counts(sorted_csv_dir: Path) -> tuple[dict, int]:
         return {}, 0
 
 
-def plot_overall_bars(data_df: pd.DataFrame, total_gt_count: int, output_dir: Path):
+def plot_overall_bars(data_df: pd.DataFrame, thresh_data: pd.DataFrame, non_zero_data: pd.DataFrame, total_gt_count: int, output_dir: Path):
     if data_df.empty or total_gt_count == 0:
         print("Skipping overall plot due to missing data or zero ground truth count.")
         return
 
     overall_counts = data_df.groupby(['model_version', 'status']).size().unstack(fill_value=0)
     overall_counts = overall_counts.reindex(columns=['Matched', 'Missing', 'Misclassified'], fill_value=0)
-
     overall_percentages = (overall_counts / total_gt_count) * 100
 
-    fig, ax = plt.subplots(figsize=(12, 7))
+    thresh_counts = thresh_data.groupby(['model_version', 'status']).size().unstack(fill_value=0)
+    thresh_counts = thresh_counts.reindex(columns=['Matched', 'Missing', 'Misclassified'], fill_value=0)
+    thresh_percentages = (thresh_counts / total_gt_count) * 100
+
+    non_zero_counts = non_zero_data.groupby(['model_version', 'status']).size().unstack(fill_value=0)
+    non_zero_counts = non_zero_counts.reindex(columns=['Matched', 'Missing', 'Misclassified'], fill_value=0)
+    non_zero_percentages = (non_zero_counts / total_gt_count) * 100
+
+    fig, ax = plt.subplots(3, 1, figsize=(12, 21))
     n_models = len(overall_counts.index)
     n_status = len(overall_counts.columns)
     bar_width = 0.25
     index = np.arange(n_models)
 
-    for i, status in enumerate(overall_counts.columns):
-        counts = overall_counts[status]
-        percentages = overall_percentages[status]
-        bars = ax.bar(index + i * bar_width, counts, bar_width, label=status, color=STATUS_COLORS.get(status, 'gray'))
+    for k in range(3):
+        type = 'all' if k == 0 else 'thresh' if k == 1 else 'non-zero'
+        for i, status in enumerate(overall_counts.columns):
+            if type == 'all':
+                counts = overall_counts[status]
+                percentages = overall_percentages[status]
+            elif type == 'thresh':
+                counts = thresh_counts[status]
+                percentages = thresh_percentages[status]
+            elif type == 'non-zero':
+                counts = non_zero_counts[status]
+                percentages = non_zero_percentages[status]
+            bars = ax[k].bar(index + i * bar_width, counts, bar_width, label=status, color=STATUS_COLORS.get(status, 'gray'))
 
-        for bar, perc in zip(bars, percentages):
-            height = bar.get_height()
-            ax.text(bar.get_x() + bar.get_width() / 2., height + 5,
-                    f'{perc:.1f}%',
-                    ha='center', va='bottom', fontsize=9)
+            for bar, perc in zip(bars, percentages):
+                height = bar.get_height()
+                ax[k].text(bar.get_x() + bar.get_width() / 2., height + 5,
+                        f'{perc:.1f}%',
+                        ha='center', va='bottom', fontsize=9)
 
-    ax.set_xlabel('Model Version')
-    ax.set_ylabel('Count')
-    ax.set_title('Overall Detection Counts and Percentages (Relative to Total Ground Truth)')
-    ax.set_xticks(index + bar_width * (n_status - 1) / 2)
-    ax.set_xticklabels(overall_counts.index)
-    ax.legend(title="Status")
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
+        ax[k].set_xlabel('Model Version')
+        ax[k].set_ylabel('Count')
+        ax[k].set_title(f'Overall Detection Counts and Percentages (Relative to Total Ground Truth) - {type}')
+        ax[k].set_xticks(index + bar_width * (n_status - 1) / 2)
+        ax[k].set_xticklabels(overall_counts.index)
+        ax[k].legend(title="Status")
+        ax[k].spines['top'].set_visible(False)
+        ax[k].spines['right'].set_visible(False)
     plt.tight_layout()
     plt.savefig(output_dir / 'overall_counts_bars.png', dpi=300)
     plt.close(fig)
     print(f"Saved overall counts plot to {output_dir / 'overall_counts_bars.png'}")
 
-def plot_sequence_bars(data_df: pd.DataFrame, sequence_gt_counts: dict, output_dir: Path):
+def plot_sequence_bars(data_df: pd.DataFrame, sequence_gt_counts: dict, output_dir: Path, type: str):
     if data_df.empty or not sequence_gt_counts:
         print("Skipping sequence plot due to missing data or ground truth counts.")
         return
@@ -200,7 +288,7 @@ def plot_sequence_bars(data_df: pd.DataFrame, sequence_gt_counts: dict, output_d
         axes[j].axis('off')
 
     plt.tight_layout(rect=[0, 0, 1, 1])
-    plt.savefig(output_dir / 'sequence_counts_bars.png', dpi=300)
+    plt.savefig(output_dir / f'sequence_counts_bars_{type}.png', dpi=300)
     plt.close(fig)
 
 def main():
@@ -210,12 +298,19 @@ def main():
     
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    combined_data = load_data(matched_csv_dir)
+    combined_data, thresh_data, non_zero_data = load_data(matched_csv_dir)
+
+    # print counts of each dataframe's match, missing, misclassified counts
+    print(combined_data.groupby(['model_version', 'status']).size().unstack(fill_value=0))
+    print(thresh_data.groupby(['model_version', 'status']).size().unstack(fill_value=0))
+    print(non_zero_data.groupby(['model_version', 'status']).size().unstack(fill_value=0))
 
     sequence_gt_counts, total_gt_count = get_ground_truth_counts(sorted_csv_dir)
 
-    plot_overall_bars(combined_data, total_gt_count, output_dir)
-    plot_sequence_bars(combined_data, sequence_gt_counts, output_dir)
+    plot_overall_bars(combined_data, thresh_data, non_zero_data, total_gt_count, output_dir)
+    plot_sequence_bars(combined_data, sequence_gt_counts, output_dir, "all")
+    plot_sequence_bars(thresh_data, sequence_gt_counts, output_dir, "thresh")
+    plot_sequence_bars(non_zero_data, sequence_gt_counts, output_dir, "non-zero")
 
 
 if __name__ == "__main__":
