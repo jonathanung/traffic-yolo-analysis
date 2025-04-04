@@ -5,7 +5,6 @@ import numpy as np
 import os
 from pathlib import Path
 import matplotlib.ticker as mtick
-from pandas import DataFrame
 from pandas.core.interchange.dataframe_protocol import DataFrame
 import seaborn as sns
 from statsmodels.nonparametric.smoothers_lowess import lowess
@@ -82,7 +81,7 @@ def plot_data(results_df: DataFrame):
         # Create scatter plot
         axes[1][i].scatter(model_data['euclidean distance'], model_data['confidence'], alpha=0.05, s=5)
         axes[1][i].set_title(model_version + f' (euclidean distance > {threshold})')
-        axes[1][i].set_xlabel('euclidean distance')
+        axes[1][i].set_xlabel('Euclidean Distance')
         axes[1][i].set_ylabel('Confidence')
         axes[1][i].grid(True)
 
@@ -96,7 +95,7 @@ def plot_data(results_df: DataFrame):
 
     plt.tight_layout()
     os.makedirs('./results', exist_ok=True)
-    plt.savefig('./results/confidence_vs_euclidean distance.png')
+    plt.savefig('./results/confidence_vs_euclidean_distance.png')
     plt.close()
 
 def main():
