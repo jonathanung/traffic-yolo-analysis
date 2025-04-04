@@ -4,6 +4,7 @@ import numpy as np
 import os
 from pathlib import Path
 import matplotlib.ticker as mtick
+import seaborn as sns
 from pandas.core.interchange.dataframe_protocol import DataFrame
 
 '''
@@ -98,6 +99,7 @@ def calculate_iou_DF(results_df: pd.DataFrame, gt_df: pd.DataFrame):
 
 
 def plot_data_IoU(to_plot: pd.DataFrame, output_dir: Path):
+    sns.set_style("darkgrid")
     file_output = output_dir.joinpath("IoU_residuals.png")
 
     fig, axes = plt.subplots(2, len(to_plot["Model"].unique()), figsize=(15, 10))
@@ -117,6 +119,7 @@ def plot_data_IoU(to_plot: pd.DataFrame, output_dir: Path):
 
 
 def plot_euclidean(to_plot: pd.DataFrame, output_dir: Path):
+    sns.set_style("darkgrid")
     file_output = output_dir.joinpath("euc_residuals.png")
     fig, axes = plt.subplots(1, len(to_plot["Model"].unique()), figsize=(15, 10))
     for i, (model_version, model_data) in enumerate(to_plot.groupby("Model")):
