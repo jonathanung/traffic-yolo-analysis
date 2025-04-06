@@ -353,7 +353,7 @@ def export_metrics_to_csv(sequence_metrics: pd.DataFrame, model_metrics: pd.Data
 def main():
     matched_csv_dir = Path("./data/matched_csv")
     sorted_csv_dir = Path("./data/sortedcsv")
-    output_dir = Path("./results/f1_scores_thres")
+    output_dir = Path("./results/f1_scores_thresh")
     
     # Create output directory if it doesn't exist
     output_dir.mkdir(parents=True, exist_ok=True)

@@ -1,0 +1,127 @@
+import pandas as pd
+from scipy import stats
+import numpy as np
+from pathlib import Path
+import matplotlib.pyplot as plt
+
+def perform_day_night_analysis(data_df):
+    """
+    Perform t-tests comparing day vs night performance for each YOLO model
+    """
+    models = ['YOLOv3', 'YOLOv5', 'YOLOv8']
+    
+    results = []
+    
+    for model in models:
+        day_scores = data_df[
+            (data_df['model_version'] == model) & 
+            (data_df['dataset'].str.contains('daySequence'))
+        ]['f1_score']
+        
+        night_scores = data_df[
+            (data_df['model_version'] == model) & 
+            (data_df['dataset'].str.contains('nightSequence'))
+        ]['f1_score']
+        
+        t_stat, p_value = stats.ttest_ind(day_scores, night_scores)
+        
+        day_mean = day_scores.mean()
+        night_mean = night_scores.mean()
+        
+        results.append({
+            'model': model,
+            'day_mean_f1': day_mean,
+            'night_mean_f1': night_mean,
+            'difference': night_mean - day_mean,
+            't_statistic': t_stat,
+            'p_value': p_value,
+            'significant': p_value < 0.05
+        })
+    
+    return pd.DataFrame(results)
+
+def export_results_to_csv(results_df: pd.DataFrame, output_dir: Path, suffix: str = ''):
+    """Export the t-test results to a CSV file."""
+    if not results_df.empty:
+        filename = f'day_night_ttest_results{suffix}.csv'
+        results_df.to_csv(output_dir / filename, index=False)
+        print(f"Saved t-test results to {output_dir / filename}")
+
+def print_analysis_results(results_df: pd.DataFrame, analysis_type: str = ''):
+    """Print formatted analysis results."""
+    print(f"\nDay vs Night Performance Analysis{' - ' + analysis_type if analysis_type else ''}:")
+    print(results_df.to_string(index=False))
+    
+    print("\nDetailed Analysis:")
+    for _, row in results_df.iterrows():
+        print(f"\n{row['model']} Analysis:")
+        print(f"Day Mean F1: {row['day_mean_f1']:.3f}")
+        print(f"Night Mean F1: {row['night_mean_f1']:.3f}")
+        print(f"Difference (Night - Day): {row['difference']:.3f}")
+        print(f"P-value: {row['p_value']:.4f}")
+        print(f"Statistically Significant: {'Yes' if row['significant'] else 'No'}")
+
+def plot_day_night_comparison(results_df: pd.DataFrame, output_dir: Path, suffix: str = '', analysis_type: str = ''):
+    """Create a two-sided bar graph comparing day and night performance with significance indicators."""
+    fig, ax = plt.subplots(figsize=(10, 6))
+    
+    models = results_df['model'].values
+    y_pos = np.arange(len(models))
+    bar_width = 0.35
+    
+    day_bars = ax.barh(y_pos - bar_width/2, results_df['day_mean_f1'], 
+                      bar_width, label='Day', color='#FDB813', alpha=0.7)
+    night_bars = ax.barh(y_pos + bar_width/2, results_df['night_mean_f1'], 
+                        bar_width, label='Night', color='#1B2B44', alpha=0.7)
+    
+    for idx, row in results_df.iterrows():
+        if row['significant']:
+            ax.text(max(row['day_mean_f1'], row['night_mean_f1']) + 0.02, 
+                   idx, '*', fontsize=14, va='center')
+    
+    # Customize the plot
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(models)
+    ax.set_xlabel('F1 Score')
+    ax.set_title(f'Day vs Night Performance Comparison{" - " + analysis_type if analysis_type else ""}')
+    ax.legend()
+    ax.grid(True, axis='x', linestyle='--', alpha=0.7)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    plt.tight_layout()
+    plt.savefig(output_dir / f'day_night_comparison{suffix}.png', dpi=300, bbox_inches='tight')
+    plt.close(fig)
+    print(f"Saved day/night comparison plot to {output_dir / f'day_night_comparison{suffix}.png'}")
+
+def main():
+    output_dir = Path("./results/statistical_analysis")
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    try:
+        versions = [
+            ('', 'f1_metrics_by_sequence.csv', 'Standard IoU'),
+            ('_thresh', 'f1_metrics_by_sequence.csv', 'Thresholded IoU'),
+            ('_nonzero', 'f1_metrics_by_sequence.csv', 'Non-zero IoU')
+        ]
+        
+        for suffix, input_file, analysis_type in versions:
+            try:
+                input_path = Path(f"./results/f1_scores{suffix}") / input_file
+                f1_data = pd.read_csv(input_path)
+                
+                results_df = perform_day_night_analysis(f1_data)
+                print_analysis_results(results_df, analysis_type)
+                export_results_to_csv(results_df, output_dir, suffix)
+                
+                plot_day_night_comparison(results_df, output_dir, suffix, analysis_type)
+                
+            except FileNotFoundError:
+                print(f"Warning: {input_path} not found. Skipping {analysis_type} analysis.")
+            except Exception as e:
+                print(f"Error during {analysis_type} analysis: {str(e)}")
+        
+    except Exception as e:
+        print(f"Error during analysis: {str(e)}")
+
+if __name__ == "__main__":
+    main()
