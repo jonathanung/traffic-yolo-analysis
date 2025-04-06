@@ -99,7 +99,7 @@ def calculate_iou_DF(results_df: pd.DataFrame, gt_df: pd.DataFrame):
 
 def plot_data_IoU(to_plot: pd.DataFrame, output_dir: Path):
     sns.set_style("darkgrid")
-    file_output = output_dir.joinpath("IoU_residuals.png")
+    file_output = output_dir.joinpath("IoU_plots.png")
 
     fig, axes = plt.subplots(2, len(to_plot["model"].unique()), figsize=(15, 10))
 
@@ -111,7 +111,7 @@ def plot_data_IoU(to_plot: pd.DataFrame, output_dir: Path):
             ax.hist(model_data["IoU"], bins=100, alpha=0.6)
             title = model_version + ' (IoU > 0.01)' if i == 0 else model_version
             ax.set_title(title)
-            ax.set_xlabel("IoU Residuals (n=0.01)")
+            ax.set_xlabel("IoU percentage (n=0.01)")
             ax.set_ylabel("Frequency")
             max_ylim = 1000 if i == 0 else 12000
             ax.set_ylim(0, max_ylim)
