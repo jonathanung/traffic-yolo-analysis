@@ -81,7 +81,7 @@ def main():
                                                             ground_truth_df.to_dict('records'))])
 
     # Create figure with subplots
-    fig, axes = plt.subplots(2, 3, figsize=(15, 10))
+    fig, axes = plt.subplots(3, 3, figsize=(15, 15))
     fig.suptitle('Confidence Level vs IoU by Model')
 
     # Plot each model's data
@@ -135,6 +135,33 @@ def main():
                        verticalalignment='top')
         
         axes[1][i].legend(['Data', 'Lowess', 'Linear'])
+
+    for i, model in enumerate(['YOLOv3', 'YOLOv5', 'YOLOv8']):
+        model_data = yolo_df[yolo_df['model_version'] == model]
+        model_data = model_data[model_data['iou'] >= 0.45]
+        
+        # Create scatter plot
+        axes[2][i].scatter(model_data['iou'], model_data['confidence'], alpha=0.05, s=5)
+        axes[2][i].set_title(model + ' (IoU >= 0.45)')
+        axes[2][i].set_xlabel('IoU')
+        axes[2][i].set_ylabel('Confidence')
+        axes[2][i].grid(True)
+        
+        # Add trend line
+        lowess_fit = lowess(model_data['confidence'], model_data['iou'], frac=0.2)
+        linear_best_fit = scipy.stats.linregress(model_data['iou'], model_data['confidence'])
+        axes[2][i].plot(lowess_fit[:, 0], lowess_fit[:, 1], "r--", alpha=0.8)
+        axes[2][i].plot(model_data['iou'], linear_best_fit.intercept + linear_best_fit.slope * model_data['iou'], "b-", alpha=0.8)
+
+        # Calculate correlation coefficient
+        corr = model_data['iou'].corr(model_data['confidence'])
+        
+        # Add correlation text to plot
+        axes[2][i].text(0.05, 0.95, f'r = {corr:.3f}', 
+                       transform=axes[2][i].transAxes,
+                       verticalalignment='top')
+        
+        axes[2][i].legend(['Data', 'Lowess', 'Linear'])
 
     plt.tight_layout()
     os.makedirs('./results', exist_ok=True)
