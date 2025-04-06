@@ -6,7 +6,7 @@ import seaborn  as sns
 from pathlib import Path
 from scipy import stats
 
-def load_data(data_dir:Path, models:list,):
+def crosstab_data(data_dir:Path, models:list,):
     categories = {"matched": "_matched.csv", "misclassified": "_misclassified.csv", "missing": "_missing.csv"}
     dfs = []
     for model in models:
@@ -34,7 +34,7 @@ def three_way_chi_square(data:pd.DataFrame):
 def main():
     models = ["3", "5", "8"]
     data_dir = Path("data/matched_csv")
-    data = load_data(data_dir, models)
+    data = crosstab_data(data_dir, models)
     _, p, _, _ = stats.chi2_contingency(data)
 
     pval = three_way_chi_square(data)
