@@ -235,7 +235,7 @@ def plot_f1_by_model(model_metrics: pd.DataFrame, output_dir: Path):
                    f'{height:.2f}', ha='center', va='bottom', fontsize=9)
     
     ax.set_ylabel('Score')
-    ax.set_title('F1 Score, Precision, and Recall by Model')
+    ax.set_title('F1 Score, Precision, and Recall by Model (IoU >= 0.45)')
     ax.set_xticks(index)
     ax.set_xticklabels(model_metrics['model_version'])
     ax.legend()
@@ -281,7 +281,7 @@ def plot_f1_by_sequence(sequence_metrics: pd.DataFrame, output_dir: Path):
                        f'{height:.2f}', ha='center', va='bottom', fontsize=8)
     
     ax.set_ylabel('F1 Score')
-    ax.set_title('F1 Score by Sequence and Model')
+    ax.set_title('F1 Score by Sequence and Model (IoU >= 0.45)')
     ax.set_xticks(index)
     ax.set_xticklabels(sequences, rotation=45, ha='right')
     ax.legend()
@@ -326,7 +326,7 @@ def plot_f1_by_day_night(day_night_metrics: pd.DataFrame, output_dir: Path):
                        f'{height:.2f}', ha='center', va='bottom', fontsize=9)
     
     ax.set_ylabel('F1 Score')
-    ax.set_title('F1 Score by Day/Night Conditions')
+    ax.set_title('F1 Score by Day/Night Conditions (IoU >= 0.45)')
     ax.set_xticks(index)
     ax.set_xticklabels(times)
     ax.legend()
