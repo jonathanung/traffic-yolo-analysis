@@ -6,6 +6,8 @@ data/*
 !data/counts/*
 !data/sortedcsv/
 !data/sortedcsv/*
+!data/edge_cases/
+!data/edge_cases/*
 data/sortedcsv/yolov3_output.csv
 data/sortedcsv/yolov5_output.csv
 data/sortedcsv/yolov8_output.csv
