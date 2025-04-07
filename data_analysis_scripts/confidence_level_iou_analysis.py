@@ -107,7 +107,7 @@ def main():
                        transform=axes[0][i].transAxes,
                        verticalalignment='top')
         
-        axes[0][i].legend(['Data', 'Linear'])
+        axes[0][i].legend([f'Data (n={len(model_data)})', 'Linear'])
 
     for i, model in enumerate(['YOLOv3', 'YOLOv5', 'YOLOv8']):
         model_data = yolo_df[yolo_df['model_version'] == model]
@@ -134,7 +134,7 @@ def main():
                        transform=axes[1][i].transAxes,
                        verticalalignment='top')
         
-        axes[1][i].legend(['Data', 'Lowess', 'Linear'])
+        axes[1][i].legend([f'Data (n={len(model_data)})', 'Lowess', 'Linear'])
 
     for i, model in enumerate(['YOLOv3', 'YOLOv5', 'YOLOv8']):
         model_data = yolo_df[yolo_df['model_version'] == model]
@@ -161,7 +161,7 @@ def main():
                        transform=axes[2][i].transAxes,
                        verticalalignment='top')
         
-        axes[2][i].legend(['Data', 'Lowess', 'Linear'])
+        axes[2][i].legend([f'Data (n={len(model_data)})', 'Lowess', 'Linear'])
 
     plt.tight_layout()
     os.makedirs('./results', exist_ok=True)
