@@ -118,3 +118,53 @@ Input:
 
 Output:
 CSV files per model containing sorted IoU and Euclidean distance values (IoU_data_model{model}.csv, euclidean_data_model{model}.csv)
+
+
+### ttest_dvn.py
+Summary of function:
+This script performs t-tests to analyze the performance differences between day and night conditions for each YOLO model (YOLOv3, YOLOv5, YOLOv8). It examines three key metrics: precision, recall, and F1 score. The script generates visualizations comparing day vs night performance and indicates statistically significant differences with asterisks (*).
+
+Input:
+- F1 score metrics CSV files from f1_score.py, f1_score_thresh.py, and f1_score_nonzero.py results
+
+Output:
+- CSV files:
+  - `day_night_ttest_results.csv`: T-test results for standard IoU
+  - `day_night_ttest_results_thresh.csv`: T-test results for thresholded IoU (≥0.45)
+  - `day_night_ttest_results_nonzero.csv`: T-test results for non-zero IoU
+- Visualization files (PNG):
+  - `day_night_precision_comparison.png`: Day vs night precision comparison
+  - `day_night_recall_comparison.png`: Day vs night recall comparison
+  - `day_night_f1_comparison.png`: Day vs night F1 score comparison
+  Each plot shows horizontal bars for day and night performance with significance markers.
+
+
+### ttest_model_f1.py
+Summary of function:
+This script performs pairwise t-tests between the three YOLO models to determine if there are statistically significant differences in their F1 scores. The analysis is performed on the thresholded IoU data (≥0.45) to ensure fair comparison. The script generates box plots showing the distribution of F1 scores for each model and indicates significant differences.
+
+Input:
+- F1 score metrics from f1_score_thresh.py results
+
+Output:
+- CSV file:
+  - `model_comparison_ttest_thresh.csv`: Pairwise t-test results between models
+- Visualization file:
+  - `model_comparison_thresh.png`: Box plot showing F1 score distributions with significance markers
+
+
+### mannwhitney_iou.py (mwu_iou.py)
+Summary of function:
+This script performs Mann-Whitney U tests to compare IoU distributions between YOLO models. It analyzes the data using three approaches: all individual IoU values, sequence-wise means, and sequence-wise medians. The script generates visualizations showing these distributions and marks statistically significant differences. This non-parametric test is particularly suitable for IoU analysis as it doesn't assume normal distribution.
+
+Input:
+- Matched detection CSV files from data/matched_csv/
+- Ground truth matched CSV files
+
+Output:
+- CSV file:
+  - `mwu_test_results.csv`: Results of Mann-Whitney U tests for all three analysis approaches
+- Visualization files:
+  - `model_iou_means.png`: Bar plot of mean IoU values with significance markers
+  - `model_iou_medians.png`: Bar plot of median IoU values with significance markers
+  - `model_iou_boxplot.png`: Box plot showing full IoU distributions with significance markers
