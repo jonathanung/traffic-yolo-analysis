@@ -20,27 +20,36 @@ bash analysis.sh
 ### Analysis Scripts
 - `data_analysis_scripts/`
   - `f1_score.py` - Calculates F1 scores and generates performance plots
+  - `f1_score_thresh.py` - F1 analysis with IoU threshold ≥ 0.45
+  - `f1_score_nonzero.py` - F1 analysis with IoU > 0
   - `ttest_dvn.py` - Performs statistical analysis of day vs night performance
+  - `ttest_model_f1.py` - Performs statistical comparison between models
+  - `mannwhitney_iou.py` - Non-parametric analysis of IoU distributions
   - `counts_histogram.py` - Analyzes detection counts and distributions
+  - `confidence_level_euc_analysis.py` - Analyzes confidence vs Euclidean distance
+  - `confidence_level_iou_analysis.py` - Analyzes confidence vs IoU
+  - `matches_residuals.py` - Computes and visualizes detection residuals
+  - `IoU2CSV.py` - Processes IoU data for analysis
 
-### Key Output Files
-After running `analysis.sh`, you'll find:
-1. F1 Score Analysis:
-   - `f1_metrics_by_sequence.csv` - Detailed F1 scores per sequence
-   - `f1_metrics_by_model.csv` - Overall model performance
-   - `f1_by_sequence.png` - Performance visualization across sequences
-   - Similar files for thresholded and non-zero IoU analyses
-
-2. Statistical Analysis:
-   - `day_night_ttest_results.csv` - T-test results for day/night comparison
-   - `day_night_comparison.png` - Visualization of day/night performance differences
-   - Additional versions for different IoU thresholds
+### Output
+After running `analysis.sh`, you'll find most of your analysis in `results/`.
 
 ### Expected Results
 The analysis should show:
 1. Comparative performance of YOLOv3, YOLOv5, and YOLOv8
-2. Statistical significance of day/night performance differences
+2. Statistical significance of:
+   - Day/night performance differences
+   - Inter-model performance differences
+   - IoU distribution differences
 3. Impact of different IoU thresholds on detection accuracy
+4. Relationship between confidence scores and detection accuracy
+5. Distribution of detection counts and errors
+
+### Statistical Methods Used
+- T-tests for comparing means (day/night and model comparisons)
+- Mann-Whitney U tests for non-parametric distribution comparison
+- Correlation analysis for confidence relationships
+- Descriptive statistics for counts and distributions
 
 ### Troubleshooting
 If you encounter any issues:
@@ -52,6 +61,7 @@ If you encounter any issues:
 - The analysis uses an IoU threshold of 0.45 for the thresholded analysis
 - Statistical significance is determined at p < 0.05
 - All visualizations are saved in high resolution (300 DPI)
+- Multiple statistical approaches are used to ensure robust conclusions
+- Analysis considers both parametric and non-parametric methods
 
-For any questions or issues, please contact [your contact information]
 
