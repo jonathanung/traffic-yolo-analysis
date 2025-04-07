@@ -6,62 +6,115 @@ Scripts used to analyze the results from the LISA x YOLO data
 
 ### confidence_level_euc_analysis.py
 Summary of function:
+This script analyzes the relationship between the confidence levels of YOLO models (YOLOv3, YOLOv5, YOLOv8) and the Euclidean distance between detected bounding boxes and the corresponding ground truth boxes. The script generates scatter plots showing this relationship for each model, with trend lines using linear regression and LOESS smoothing. The analysis is performed on data loaded from CSV files containing matched detection data for YOLO models and ground truth data.
 
 Input:
+The script expects a directory containing CSV files with detection data for YOLO models and ground truth data.
 
 Output:
+The script generates and saves a PNG image containing scatter plots. 
+The plots show:
+-Confidence level vs. Euclidean distance for each YOLO model (YOLOv3, YOLOv5, YOLOv8).
+-Trend lines representing the relationship, using both linear regression and LOESS smoothing.
 
 
 ### confidence_level_iou_analysis.py
 Summary of function:
+This script analyzes the relationship between the Intersection over Union (IoU) and the confidence levels of YOLO models (YOLOv3, YOLOv5, YOLOv8). The script calculates IoU between the predicted bounding boxes and the corresponding ground truth boxes and generates scatter plots that visualize this relationship for each model. It includes trend lines using both linear regression and LOESS smoothing. Additionally, the script computes and displays the correlation coefficient (r) for each model's IoU and confidence data, allowing for an assessment of the strength and direction of the relationship between IoU and confidence levels.
 
 Input:
+The script expects a directory containing CSV files with detection data for YOLO models and ground truth data.
 
 Output:
+The script generates and saves a PNG image containing scatter plots. 
+The plots show:
+-Confidence level vs. IoU for each YOLO model (YOLOv3, YOLOv5, YOLOv8).
+-Trend lines representing the relationship, using both linear regression and LOESS smoothing.
+-The correlation coefficient (r) for each model's IoU and confidence data, indicating the strength of the linear relationship.
 
 
 ### counts_histogram.py
 Summary of function:
+The script is designed to analyze YOLO-based detection performance across multiple model versions (YOLOv3, YOLOv5, YOLOv8) by calculating Intersection over Union (IoU) scores between predicted and ground truth bounding boxes. The script then generates several plots showing detection counts and percentages, both overall and for individual image sequences, as well as during day and night conditions. These visualizations allow for the analysis of how well different models perform, highlighting matched, missing, and misclassified detections.
 
 Input:
+-Matched Data (CSV files)
+-Ground Truth Data (CSV file)
+
 
 Output:
+Visualization Files (PNG images):
+    -overall_counts_bars.png: This plot shows the counts and percentages of matched, missing, and misclassified detections for each model version (YOLOv3, YOLOv5, YOLOv8) relative to the total ground truth.
+    -Sequence Counts Bar Plots: For each dataset (sequence), separate bar plots are created to visualize the detection performance of each model (Matched, Missing, Misclassified).
+    -Day and Night Counts: Additional bar plots are created for day and night sequences by filtering the dataset for day or night sequences. These plots are included in the sequence counts bar plots for day and night.
+Printed Outputs:
+    The script also prints the counts of matched, missing, and misclassified detections to the console for each of the combined, thresholded, and non-zero datasets.
 
 
 ### f1_score_nonzero.py
 Summary of function:
+The script is the same as f1_score.py, except a threshold of IoU value having to be above 0.00, this means that the 2 bounding boxes MUST overlap by some amount. This was set to see variations with different restrictions on data being used to calculate the f1 score. The script calculates and visualizes F1 scores, precision, and recall for three YOLO models (YOLOv3, YOLOv5, YOLOv8) across different video sequences and lighting conditions (day/night). It reads precomputed detection evaluation results, computes classification metrics, and generates comparative bar plots for overall performance and per-sequence/day-night breakdowns.
+
 Input:
+-Matched Data (CSV Files)
+-Sorted CSV
 
 Output:
+Three PNG files
+f1_overall.png: Overall precision, recall, and F1 score comparison.
+f1_by_sequence.png: F1 scores per sequence for each model.
+f1_by_day_night.png: F1 scores grouped by lighting condition (day/night) for each model.
 
 
 ### f1_score_thresh.py
 Summary of function:
+The script is the same as f1_score.py, except a threshold of IoU value having to be atleast 0.45 was set to see variations with different restrictions on data being used to calculate the f1 score. This script calculates and visualizes F1 scores, precision, and recall for three YOLO models (YOLOv3, YOLOv5, YOLOv8) across different video sequences and lighting conditions (day/night). It reads precomputed detection evaluation results, computes classification metrics, and generates comparative bar plots for overall performance and per-sequence/day-night breakdowns.
 
 Input:
+-Matched Data (CSV Files)
+-Sorted CSV
 
 Output:
+Three PNG files
+f1_overall.png: Overall precision, recall, and F1 score comparison.
+f1_by_sequence.png: F1 scores per sequence for each model.
+f1_by_day_night.png: F1 scores grouped by lighting condition (day/night) for each model.
 
 
 ### f1_score.py
 Summary of function:
+The script calculates and visualizes F1 scores, precision, and recall for three YOLO models (YOLOv3, YOLOv5, YOLOv8) across different video sequences and lighting conditions (day/night). It reads precomputed detection evaluation results, computes classification metrics, and generates comparative bar plots for overall performance and per-sequence/day-night breakdowns.
 
 Input:
+-Matched Data (CSV Files)
+-Sorted CSV
 
 Output:
+Three PNG files
+f1_overall.png: Overall precision, recall, and F1 score comparison.
+f1_by_sequence.png: F1 scores per sequence for each model.
+f1_by_day_night.png: F1 scores grouped by lighting condition (day/night) for each model.
 
 
 ### IoU2CSV.py
 Summary of function:
+Gets IoU values between predicted and ground truth bounding boxes for YOLO models and saves the results as CSV files per model.
 
 Input:
+-Matched Data (CSV files)
+-Ground Truth Data (CSV file)
 
 Output:
+Per-model CSV files (3_IoU.csv, 5_IoU.csv, 8_IoU.csv) containing IoU values
 
 
 ### matches_residuals.py
 Summary of function:
+This script computes residuals between predicted and ground truth bounding boxes from YOLO models. It calculates IoU and Euclidean distance metrics, visualizes them as histograms, and saves both the plots and metric data per model version.
 
 Input:
+-Matched Data (CSV files)
+-Ground Truth Data (CSV file)
 
 Output:
+CSV files per model containing sorted IoU and Euclidean distance values (IoU_data_model{model}.csv, euclidean_data_model{model}.csv)

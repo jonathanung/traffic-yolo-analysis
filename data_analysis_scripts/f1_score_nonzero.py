@@ -1,4 +1,4 @@
-#F1 score but only using if IoU is over 45%
+#F1 score but only using if IoU is positive
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
