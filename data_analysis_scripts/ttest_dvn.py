@@ -7,36 +7,45 @@ import matplotlib.pyplot as plt
 def perform_day_night_analysis(data_df):
     """
     Perform t-tests comparing day vs night performance for each YOLO model
+    using multiple metrics (precision, recall, f1_score)
     """
     models = ['YOLOv3', 'YOLOv5', 'YOLOv8']
-    
+    metrics = ['precision', 'recall', 'f1_score']
     results = []
     
     for model in models:
-        day_scores = data_df[
-            (data_df['model_version'] == model) & 
-            (data_df['dataset'].str.contains('daySequence'))
-        ]['f1_score']
+        model_results = {'model': model}
         
-        night_scores = data_df[
-            (data_df['model_version'] == model) & 
-            (data_df['dataset'].str.contains('nightSequence'))
-        ]['f1_score']
+        for metric in metrics:
+            # Get day and night scores for this metric
+            day_scores = data_df[
+                (data_df['model_version'] == model) & 
+                (data_df['dataset'].str.contains('daySequence'))
+            ][metric]
+            
+            night_scores = data_df[
+                (data_df['model_version'] == model) & 
+                (data_df['dataset'].str.contains('nightSequence'))
+            ][metric]
+            
+            # Perform t-test
+            t_stat, p_value = stats.ttest_ind(day_scores, night_scores)
+            
+            # Calculate means
+            day_mean = day_scores.mean()
+            night_mean = night_scores.mean()
+            
+            # Store results for this metric
+            model_results.update({
+                f'day_mean_{metric}': day_mean,
+                f'night_mean_{metric}': night_mean,
+                f'difference_{metric}': night_mean - day_mean,
+                f't_statistic_{metric}': t_stat,
+                f'p_value_{metric}': p_value,
+                f'significant_{metric}': p_value < 0.05
+            })
         
-        t_stat, p_value = stats.ttest_ind(day_scores, night_scores)
-        
-        day_mean = day_scores.mean()
-        night_mean = night_scores.mean()
-        
-        results.append({
-            'model': model,
-            'day_mean_f1': day_mean,
-            'night_mean_f1': night_mean,
-            'difference': night_mean - day_mean,
-            't_statistic': t_stat,
-            'p_value': p_value,
-            'significant': p_value < 0.05
-        })
+        results.append(model_results)
     
     return pd.DataFrame(results)
 
@@ -49,49 +58,58 @@ def export_results_to_csv(results_df: pd.DataFrame, output_dir: Path, suffix: st
 
 def print_analysis_results(results_df: pd.DataFrame, analysis_type: str = ''):
     """Print formatted analysis results."""
+    metrics = ['precision', 'recall', 'f1_score']
+    
     print(f"\nDay vs Night Performance Analysis{' - ' + analysis_type if analysis_type else ''}:")
     print(results_df.to_string(index=False))
     
     print("\nDetailed Analysis:")
     for _, row in results_df.iterrows():
         print(f"\n{row['model']} Analysis:")
-        print(f"Day Mean F1: {row['day_mean_f1']:.3f}")
-        print(f"Night Mean F1: {row['night_mean_f1']:.3f}")
-        print(f"Difference (Night - Day): {row['difference']:.3f}")
-        print(f"P-value: {row['p_value']:.4f}")
-        print(f"Statistically Significant: {'Yes' if row['significant'] else 'No'}")
+        for metric in metrics:
+            print(f"\n  {metric.capitalize()}:")
+            print(f"    Day Mean: {row[f'day_mean_{metric}']:.3f}")
+            print(f"    Night Mean: {row[f'night_mean_{metric}']:.3f}")
+            print(f"    Difference (Night - Day): {row[f'difference_{metric}']:.3f}")
+            print(f"    P-value: {row[f'p_value_{metric}']:.4f}")
+            print(f"    Statistically Significant: {'Yes' if row[f'significant_{metric}'] else 'No'}")
 
 def plot_day_night_comparison(results_df: pd.DataFrame, output_dir: Path, suffix: str = '', analysis_type: str = ''):
-    """Create a two-sided bar graph comparing day and night performance with significance indicators."""
-    fig, ax = plt.subplots(figsize=(10, 6))
+    """Create separate bar graphs for each metric comparing day and night performance."""
+    metrics = ['precision', 'recall', 'f1_score']
     
-    models = results_df['model'].values
-    y_pos = np.arange(len(models))
-    bar_width = 0.35
-    
-    day_bars = ax.barh(y_pos - bar_width/2, results_df['day_mean_f1'], 
-                      bar_width, label='Day', color='#FDB813', alpha=0.7)
-    night_bars = ax.barh(y_pos + bar_width/2, results_df['night_mean_f1'], 
-                        bar_width, label='Night', color='#1B2B44', alpha=0.7)
-    
-    for idx, row in results_df.iterrows():
-        if row['significant']:
-            ax.text(max(row['day_mean_f1'], row['night_mean_f1']) + 0.02, 
-                   idx, '*', fontsize=14, va='center')
-    
-    # Customize the plot
-    ax.set_yticks(y_pos)
-    ax.set_yticklabels(models)
-    ax.set_xlabel('F1 Score')
-    ax.set_title(f'Day vs Night Performance Comparison{" - " + analysis_type if analysis_type else ""}')
-    ax.legend()
-    ax.grid(True, axis='x', linestyle='--', alpha=0.7)
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-    plt.tight_layout()
-    plt.savefig(output_dir / f'day_night_comparison{suffix}.png', dpi=300, bbox_inches='tight')
-    plt.close(fig)
-    print(f"Saved day/night comparison plot to {output_dir / f'day_night_comparison{suffix}.png'}")
+    for metric in metrics:
+        fig, ax = plt.subplots(figsize=(10, 6))
+        
+        models = results_df['model'].values
+        y_pos = np.arange(len(models))
+        bar_width = 0.35
+        
+        day_bars = ax.barh(y_pos - bar_width/2, results_df[f'day_mean_{metric}'], 
+                          bar_width, label='Day', color='#FDB813', alpha=0.7)
+        night_bars = ax.barh(y_pos + bar_width/2, results_df[f'night_mean_{metric}'], 
+                            bar_width, label='Night', color='#1B2B44', alpha=0.7)
+        
+        # Add significance markers
+        for idx, row in results_df.iterrows():
+            if row[f'significant_{metric}']:
+                ax.text(max(row[f'day_mean_{metric}'], row[f'night_mean_{metric}']) + 0.02, 
+                       idx, '*', fontsize=14, va='center')
+        
+        # Customize the plot
+        ax.set_yticks(y_pos)
+        ax.set_yticklabels(models)
+        ax.set_xlabel(metric.capitalize())
+        ax.set_title(f'Day vs Night {metric.capitalize()} Comparison{" - " + analysis_type if analysis_type else ""}')
+        ax.legend()
+        ax.grid(True, axis='x', linestyle='--', alpha=0.7)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        
+        plt.tight_layout()
+        plt.savefig(output_dir / f'day_night_{metric}_comparison{suffix}.png', dpi=300, bbox_inches='tight')
+        plt.close(fig)
+        print(f"Saved {metric} day/night comparison plot to {output_dir / f'day_night_{metric}_comparison{suffix}.png'}")
 
 def main():
     output_dir = Path("./results/statistical_analysis")
