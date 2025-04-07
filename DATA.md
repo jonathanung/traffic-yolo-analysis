@@ -46,6 +46,8 @@ print("Path to dataset files:", path)
 
 ## Bosch Traffic Light Dataset
 
+* Note: we ended up not using Bosch due to time limitations
+
 This dataset is also from kaggle
 
 [Link](https://www.kaggle.com/datasets/researcherno1/small-traffic-lights)
