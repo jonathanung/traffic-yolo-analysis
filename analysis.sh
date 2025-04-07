@@ -14,3 +14,5 @@ python3 ./data_analysis_scripts/f1_score_nonzero.py
 python3 ./data_analysis_scripts/chi-square-test.py
 
 python3 ./data_analysis_scripts/ttest_dvn.py
+python3 ./data_analysis_scripts/ttest_model_f1.py
+python3 ./data_analysis_scripts/mannwhitney_iou.py
